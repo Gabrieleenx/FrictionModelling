@@ -1,0 +1,8 @@
+# ignore visual studio settings
+*.json
+# ignore pycharm
+*.idea/
+# ignore pycache
+*.pyc
+# ignore ALL files in ANY directory named temp
+images/
