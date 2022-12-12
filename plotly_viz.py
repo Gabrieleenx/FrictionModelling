@@ -1,11 +1,9 @@
 import numpy as np
 from dash import Dash, html, dcc, Input, Output
-import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from friction import PlanarFriction
 from friction_simple import PlanarFrictionReduced
-
+from pre_compute_ls import CustomHashList
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -244,30 +242,40 @@ def update_3d_force(model,
         f = planar_lugre_reduced.steady_state_gamma(vel_vec={'x': 0, 'y': 0, 'tau': 1e-9}, p_x_y=shape_set[shape],
                                                     gamma=gamma)
         gamma = planar_lugre_reduced.update_radius({'x': 0, 'y': 0, 'tau': 1e-9})
+        print('gamma', gamma)
+
+    ls_approx = CustomHashList(100)
+
+    ls_approx.initialize(planar_lugre_ellipse, shape_set[shape])
 
     for x_, v in enumerate(x):
         for y_, w in enumerate(y):
-            f = planar_lugre.steady_state(vel_vec={'x':v, 'y': 0, 'tau': w}, p_x_y=shape_set[shape])
-            f_surf[x_, y_] = np.linalg.norm([f['x'], f['y']])
-            t_surf[x_, y_] = abs(f['tau'])
+            if 'Full' in model:
+
+                f = planar_lugre.steady_state(vel_vec={'x':v, 'y': 0, 'tau': w}, p_x_y=shape_set[shape])
+                f_surf[x_, y_] = np.linalg.norm([f['x'], f['y']])
+                t_surf[x_, y_] = abs(f['tau'])
             if shape != 'Circle' and 'Reduced + gamma' in model:
                 f, g = planar_lugre_reduced.steady_state(vel_vec={'x':v, 'y': 0, 'tau': w}, p_x_y=shape_set[shape])
                 f_surf_red[x_, y_] = np.linalg.norm([f['x'], f['y']])
                 t_surf_red[x_, y_] = abs(f['tau'])
                 g_surf[x_, y_] = g
 
-            f = planar_lugre_reduced.steady_state_gamma(vel_vec={'x':v, 'y': 0, 'tau': w}, p_x_y=shape_set[shape],
-                                                           gamma=gamma)
-            f_surf_red_no_g[x_, y_] = np.linalg.norm([f['x'], f['y']])
-            t_surf_red_no_g[x_, y_] = abs(f['tau'])
+            if 'Reduced' in model:
+
+                f = planar_lugre_reduced.steady_state_gamma(vel_vec={'x':v, 'y': 0, 'tau': w}, p_x_y=shape_set[shape],
+                                                               gamma=gamma)
+                f_surf_red_no_g[x_, y_] = np.linalg.norm([f['x'], f['y']])
+                t_surf_red_no_g[x_, y_] = abs(f['tau'])
 
             if 'Ellipse comp' in model:
-                ellipse = np.zeros(2)
+                #ellipse = np.zeros(2)
 
-                f = planar_lugre_ellipse.steady_state(vel_vec={'x': v, 'y': 0, 'tau': w},
-                                                      p_x_y=shape_set[shape])
-                ellipse[0] = np.linalg.norm([f['x'], f['y']]) /np.linalg.norm([f1['x'], f1['y']])
-                ellipse[1] = abs(f['tau'])/abs(f2['tau'])
+                #f = planar_lugre_ellipse.steady_state(vel_vec={'x': v, 'y': 0, 'tau': w},
+                #                                      p_x_y=shape_set[shape])
+                #ellipse[0] = np.linalg.norm([f['x'], f['y']]) /np.linalg.norm([f1['x'], f1['y']])
+                #ellipse[1] = abs(f['tau'])/abs(f2['tau'])
+                ellipse = ls_approx.get_interpolation(v, w)
                 f = planar_lugre_reduced.steady_state_gamma_ellipse(vel_vec={'x': v, 'y': 0, 'tau': w}, p_x_y=shape_set[shape],
                                                                     gamma=gamma, norm_ellipse=ellipse)
                 f_surf_red_no_g_ellipse[x_, y_] = np.linalg.norm([f['x'], f['y']])
@@ -477,6 +485,7 @@ def update_ellipse(lin_vel,
     ang_vel_list = np.linspace(ang_vel, 0, num)
     lin_vel_list = np.linspace(0, lin_vel, num)
     fig = go.Figure()
+    """
     for shape_ in shape_set:
         if shape_ == 'Line':
             continue
@@ -561,7 +570,7 @@ def update_ellipse(lin_vel,
              }
     arrows += [arrow]
     fig.update_layout(annotations=arrows)
-    """
+
 
     return fig
 

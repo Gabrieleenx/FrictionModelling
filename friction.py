@@ -60,6 +60,26 @@ class PlanarFriction(object):
 
         return force
 
+    def step_stability(self, vel_vec: Dict[str, float], p_x_y: Callable[[float, float], float]) -> Dict[str, float]:
+        """
+        k
+        :param vel_vec: velocity vector in the center of the censor
+        :param p_x_y: function that takes x, y and returns p
+        :return: force in x, y and moment expressed in the center of the sensor.
+        """
+
+        self.update_cop_and_force_grid(p_x_y)
+
+        self.update_velocity_grid(vel_vec)
+
+        self.update_lugre_stability()
+
+        force_at_cop = self.approximate_integral()
+
+        force = self.move_force_to_center(force_at_cop)
+
+        return force
+
     def steady_state(self, vel_vec: Dict[str, float], p_x_y: Callable[[float, float], float]) -> Dict[str, float]:
         """
         k
@@ -115,6 +135,25 @@ class PlanarFriction(object):
         dz = self.velocity_grid - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
 
         self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz + self.p['s2'] * self.velocity_grid) * self.normal_force_grid
+
+        self.lugre['z'] += dz * self.p['dt']
+
+    def update_lugre_stability(self):
+
+        v_norm = np.linalg.norm(self.velocity_grid, axis=0)
+        g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * \
+            np.exp(- (v_norm / self.p['v_s']) ** self.p['alpha'])
+
+        v_norm1 = v_norm.copy()
+        v_norm1[v_norm1 == 0] = 1
+        luGre_ss = self.velocity_grid / (self.p['s0'] * (v_norm1 / g))
+        delta_z = (luGre_ss - self.lugre['z']) / self.p['dt']
+
+        dz = self.velocity_grid - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
+
+        dz = np.clip(abs(dz), np.zeros((2, 20, 20)), abs(delta_z)) * np.sign(dz)
+        self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz + self.p[
+            's2'] * self.velocity_grid) * self.normal_force_grid
 
         self.lugre['z'] += dz * self.p['dt']
 

@@ -47,10 +47,46 @@ def vel_gen_4(t):
     vel = {'x': vx, 'y': vy, 'tau': tau}
     return vel
 
+def vel_gen_5(t):
+    angle = np.pi * 45/180
+    tau = 0
+    if t < 0.1:
+        vn = t
+
+    elif t < 0.2:
+        vn = 0.1 - (t - 0.1)
+    elif t < 0.25:
+        vn = 0
+    elif t< 0.35:
+        vn = 0
+        tau = (t - 0.25) * 30
+    elif t < 0.45:
+        vn = 0
+        tau = 30*0.1
+    elif t < 0.47:
+        vn = t - 0.45
+        tau = 30 * 0.1
+    elif t < 0.6:
+        tau = 30 * 0.1
+        vn = 0.02
+    elif t < 0.7:
+        tau = 30 * 0.1
+        vn = 0.02 + (t - 0.6)
+    elif t < 8:
+        vn = 0.12
+        tau = 30 * 0.1
+    else:
+        vn = 0
+        tau = 0
+    vx = np.cos(angle)*vn
+    vy = np.sin(angle)*vn
+
+    vel = {'x': vx, 'y': vy, 'tau': tau}
+    return vel
 
 def main():
     time = 1
-    dt_list = [1e-3, 1e-4, 1e-5]
+    dt_list = [1e-2, 1e-3, 1e-4]
 
     planar_lugre = []
     planar_lugre_reduced = []
@@ -68,8 +104,10 @@ def main():
                       's1': 2e1,
                       's2': 0.4,
                       'dt': dt_list[k]}
-        planar_lugre.append(PlanarFriction(properties=properties))
-        planar_lugre_reduced.append(PlanarFrictionReduced(properties=properties))
+        planar_lugre = PlanarFriction(properties=properties)
+        planar_lugre_stable = PlanarFriction(properties=properties)
+
+        #planar_lugre_reduced= PlanarFrictionReduced(properties=properties)
 
         n_steps = int(time/properties['dt'])
 
@@ -81,7 +119,7 @@ def main():
 
             vel = vel_gen_4(i * properties['dt'])
 
-            f = planar_lugre[k].step(vel_vec=vel, p_x_y=p_x_y2)
+            f = planar_lugre.step(vel_vec=vel, p_x_y=p_x_y2)
 
             data[k][1, i] = f['x']
             data[k][2, i] = f['y']
@@ -90,39 +128,37 @@ def main():
             data[k][5, i] = vel['y']
             data[k][6, i] = vel['tau']
 
-            f = planar_lugre_reduced[k].step(vel_vec=vel, p_x_y=p_x_y2)
+            f = planar_lugre_stable.step_stability(vel_vec=vel, p_x_y=p_x_y2)
             data_reduced[k][1, i] = f['x']
             data_reduced[k][2, i] = f['y']
             data_reduced[k][3, i] = f['tau']
-            data_reduced[k][7, i] = f['gamma']
 
 
-    f, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(12, 8))
+    f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 8))
 
     for k in range(len(dt_list)):
         if np.max(abs(data[k][1, :])) < 100:
-            ax1.plot(data[k][0, :], data[k][1, :], label='fx '+str(k))
+            ax1.plot(data[k][0, :], data[k][1, :], label='fx dt = '+str(dt_list[k]))
         if np.max(abs(data[k][2, :])) < 100:
-            ax1.plot(data[k][0, :], data[k][2, :], label='fy '+str(k))
+            ax1.plot(data[k][0, :], data[k][2, :], label='fy dt = '+str(dt_list[k]))
+
         if np.max(abs(data_reduced[k][1, :])) < 100:
-            ax1.plot(data[k][0, :], data_reduced[k][1, :], '--', label='fx red '+str(k))
+            ax1.plot(data[k][0, :], data_reduced[k][1, :], '--', label='fx stab dt = '+str(dt_list[k]))
         if np.max(abs(data_reduced[k][2, :])) < 100:
-            ax1.plot(data[k][0, :], data_reduced[k][2, :], '--', label='fy red '+str(k))
+            ax1.plot(data[k][0, :], data_reduced[k][2, :], '--', label='fy stab dt = '+str(dt_list[k]))
 
         if np.max(abs(data[k][3, :])) < 100:
-            ax2.plot(data[k][0, :], data[k][3, :], label='f tau '+str(k))
-        if np.max(abs(data_reduced[k][3, :])) < 100:
-            ax2.plot(data[k][0, :], data_reduced[k][3, :], '--', label='f tau red '+str(k))
+            ax2.plot(data[k][0, :], data[k][3, :], label='f tau dt = '+str(dt_list[k]))
 
-        if np.max(abs(data_reduced[k][7, :])) < 100:
-            ax5.plot(data[k][0, :], data_reduced[k][7, :], label='gamma '+str(k))
+
+
+        if np.max(abs(data_reduced[k][3, :])) < 100:
+            ax2.plot(data[k][0, :], data_reduced[k][3, :], '--', label='f tau stab dt = '+str(dt_list[k]))
 
     ax1.set_title('fx and fy')
     ax1.legend()
     ax2.set_title('torque')
     ax2.legend()
-    ax5.set_title('gamma radius')
-    ax5.legend()
 
     ax3.plot(data[0][0, :], data[0][4, :], label='vx')
     ax3.plot(data[0][0, :], data[0][5, :], label='yx')
@@ -133,11 +169,8 @@ def main():
     ax4.set_title('Velocity profile')
     ax4.legend()
 
-
-
     plt.tight_layout()
     plt.show()
-
 
 if __name__ == '__main__':
     main()
