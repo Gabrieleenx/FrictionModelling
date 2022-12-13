@@ -71,6 +71,28 @@ class PlanarFrictionReduced(object):
 
         return force
 
+    def step_ellipse_stable(self, vel_vec: Dict[str, float], p_x_y: Callable[[float, float], float],
+                                       gamma: float, norm_ellipse: np.array) -> Dict[str, float]:
+        """
+        k
+        :param norm_ellipse:
+        :param gamma:
+        :param vel_vec: velocity vector in the center of the censor
+        :param p_x_y: function that takes x, y and returns p
+        :return: force in x, y and moment expressed in the center of the sensor.
+        """
+
+        self.update_cop_and_force_grid(p_x_y)
+        vel_at_cop = vel_vec
+        self.gamma = gamma
+        self.update_lugre_ellipse_stable(vel_at_cop, norm_ellipse)
+
+        force_at_cop = {'x': self.lugre['f'][0], 'y': self.lugre['f'][1], 'tau': self.lugre['f'][2]}
+
+        force = self.move_force_to_center(force_at_cop)
+
+        return force
+
     def steady_state(self, vel_vec: Dict[str, float], p_x_y: Callable[[float, float], float]) -> Dict[str, float]:
         """
         k
@@ -250,7 +272,6 @@ class PlanarFrictionReduced(object):
 
             beta = np.array([beta_t, beta_t, beta_tau])
 
-
         self.lugre['z'] = vel_at_cop_ / (self.p['s0'] * (beta / g))
 
         scaling = np.array([1, 1, (9/8)])
@@ -281,7 +302,44 @@ class PlanarFrictionReduced(object):
 
         dz = beta*vel_at_cop_ - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
 
-        dz = np.clip(dz, -0.005, 0.005)
+        self.lugre['f'] = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz + scaling * self.p['s2'] * vel_at_cop_) * self.f_n
+        self.lugre['f'][2] = self.lugre['f'][2]*self.gamma
+        self.lugre['z'] += dz * self.p['dt']
+
+    def update_lugre_ellipse_stable(self, vel_at_cop, ellipse):
+        vel_at_cop_ = np.array([vel_at_cop['x'], vel_at_cop['y'], vel_at_cop['tau']*self.gamma])
+        v_norm = np.linalg.norm(vel_at_cop_)
+
+        g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * np.exp(- (v_norm/self.p['v_s'])**self.p['alpha'])
+
+        v_norm_t = np.linalg.norm(vel_at_cop_[0:2])
+
+        if vel_at_cop_[2] != 0:
+            beta_tau = ellipse[1] * v_norm / vel_at_cop_[2]
+        else:
+            beta_tau = 1
+
+        if v_norm_t != 0:
+            beta_t = ellipse[0]*v_norm / v_norm_t
+        else:
+            beta_t = 1
+
+        beta = np.array([beta_t, beta_t, beta_tau])
+
+        scaling = np.array([1, 1, (9/8)])
+
+        if v_norm == 0:
+            v_norm1 = 1
+        else:
+            v_norm1 = v_norm
+
+        z_ss_1 = vel_at_cop_ * g / (self.p['s0'] * v_norm1)
+        z_ss = beta*z_ss_1
+        delta_z = (z_ss - self.lugre['z']) / self.p['dt']
+
+        dz = beta*vel_at_cop_ - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
+
+        dz = np.clip(abs(dz), np.zeros(dz.shape), abs(delta_z))*np.sign(dz)
 
         self.lugre['f'] = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz + scaling * self.p['s2'] * vel_at_cop_) * self.f_n
         self.lugre['f'][2] = self.lugre['f'][2]*self.gamma

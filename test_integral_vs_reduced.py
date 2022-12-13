@@ -5,7 +5,7 @@ from friction_simple import PlanarFrictionReduced
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from pre_compute_ls import CustomHashList
-
+dt = 1e-4
 properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
               'mu_c': 1,
@@ -15,7 +15,7 @@ properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               's0': 1e5,
               's1': 2e1,
               's2': 0.4,
-              'dt': 1e-4}
+              'dt': dt}
 
 properties2 = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
@@ -26,7 +26,7 @@ properties2 = {'grid_shape': (20, 20),  # number of grid elements in x any
               's0': 1e5,
               's1': 2e1,
               's2': 0,
-              'dt': 1e-4}
+              'dt': dt}
 
 properties3 = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
@@ -37,7 +37,7 @@ properties3 = {'grid_shape': (20, 20),  # number of grid elements in x any
               's0': 1e5,
               's1': 2e1,
               's2': 0.4,
-              'dt': 1e-4}
+              'dt': dt}
 
 def p_x_y2(M):
     return np.ones(M[1, :, :].shape)*1e3 #+ 1e3*M[1, :, :]
@@ -159,16 +159,17 @@ def main():
 
         vel = vel_gen_5(i * properties['dt'])
 
-        f = planar_lugre.step(vel_vec=vel, p_x_y=p_x_y2)
+        f = planar_lugre.step_stability_elasto_plastic(vel_vec=vel, p_x_y=p_x_y2)
 
         data[1, i] = f['x']
         data[2, i] = f['y']
         data[3, i] = f['tau']
+
         data[4, i] = vel['x']
         data[5, i] = vel['y']
         data[6, i] = vel['tau']
 
-        f = planar_lugre_reduced.step_ellipse(vel_vec=vel, p_x_y=p_x_y2, gamma=0.00764477848712988,
+        f = planar_lugre_reduced.step_ellipse_stable(vel_vec=vel, p_x_y=p_x_y2, gamma=0.00764477848712988,
                                               norm_ellipse=ls_approx.get_interpolation(np.linalg.norm([vel['x'],
                                                                                                        vel['x']]),
                                                                                        abs(vel['tau'])))

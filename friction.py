@@ -80,6 +80,26 @@ class PlanarFriction(object):
 
         return force
 
+    def step_stability_elasto_plastic(self, vel_vec: Dict[str, float], p_x_y: Callable[[float, float], float]) -> Dict[str, float]:
+        """
+        k
+        :param vel_vec: velocity vector in the center of the censor
+        :param p_x_y: function that takes x, y and returns p
+        :return: force in x, y and moment expressed in the center of the sensor.
+        """
+
+        self.update_cop_and_force_grid(p_x_y)
+
+        self.update_velocity_grid(vel_vec)
+
+        self.update_lugre_stability_elasto_plastic()
+
+        force_at_cop = self.approximate_integral()
+
+        force = self.move_force_to_center(force_at_cop)
+
+        return force
+
     def steady_state(self, vel_vec: Dict[str, float], p_x_y: Callable[[float, float], float]) -> Dict[str, float]:
         """
         k
@@ -157,6 +177,47 @@ class PlanarFriction(object):
 
         self.lugre['z'] += dz * self.p['dt']
 
+    def update_lugre_stability_elasto_plastic(self):
+
+        v_norm = np.linalg.norm(self.velocity_grid, axis=0)
+        g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * \
+            np.exp(- (v_norm / self.p['v_s']) ** self.p['alpha'])
+
+        v_norm1 = v_norm.copy()
+        v_norm1[v_norm1 == 0] = 1
+        luGre_ss = self.velocity_grid / (self.p['s0'] * (v_norm1 / g))
+        delta_z = (luGre_ss - self.lugre['z']) / self.p['dt']
+
+        alpha = np.zeros(self.p['grid_shape'])
+
+        for i_x, x_ in enumerate(self.x_pos_vec):
+            for i_y, y_ in enumerate(self.y_pos_vec):
+                z_norm = np.linalg.norm(self.lugre['z'][:, i_x, i_y])
+                z_max = g[i_x, i_y]/self.p['s0']
+                z_ba = 0.9*z_max
+                if z_norm <= z_ba:
+                    alpha[i_x, i_y] = 0
+                elif z_norm <= z_max:
+                    alpha[i_x, i_y] = 0.5 * np.sin((z_norm - (z_max - z_ba)/2)/(z_max-z_ba)) + 0.5
+                else:
+                    alpha[i_x, i_y] = 1
+
+                if v_norm[i_x, i_y] != 0 and z_norm != 0:
+                    v_unit = self.velocity_grid[:, i_x, i_y] / v_norm[i_x, i_y]
+                    z_unit = self.lugre['z'][:, i_x, i_y] / z_norm
+                    c = v_unit.dot(z_unit)
+                    eps = (c+1)/2
+                    alpha[i_x, i_y] = eps*alpha[i_x, i_y]
+
+
+        dz = self.velocity_grid - alpha*self.lugre['z'] * (self.p['s0'] * (v_norm / g))
+
+        dz = np.clip(abs(dz), np.zeros((2, 20, 20)), abs(delta_z)) * np.sign(dz)
+        self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz + self.p[
+            's2'] * self.velocity_grid) * self.normal_force_grid
+
+        self.lugre['z'] += dz * self.p['dt']
+
     def update_lugre_ss(self):
         v_norm = np.linalg.norm(self.velocity_grid, axis=0)
         g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * \
@@ -165,7 +226,6 @@ class PlanarFriction(object):
         self.lugre['z'] = self.velocity_grid / (self.p['s0'] * (v_norm / g))
 
         self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s2'] * self.velocity_grid) * self.normal_force_grid
-
 
     def approximate_integral(self):
         fx = - np.sum(self.lugre['f'][0, :, :])

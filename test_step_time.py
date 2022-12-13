@@ -107,7 +107,7 @@ def main():
         planar_lugre = PlanarFriction(properties=properties)
         planar_lugre_stable = PlanarFriction(properties=properties)
 
-        #planar_lugre_reduced= PlanarFrictionReduced(properties=properties)
+        planar_lugre_reduced = PlanarFrictionReduced(properties=properties)
 
         n_steps = int(time/properties['dt'])
 
