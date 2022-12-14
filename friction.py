@@ -39,6 +39,8 @@ class PlanarFriction(object):
         z = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))  # bristles
         f = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))  # tangential force at each grid cell
         self.lugre = {'z': z, 'f': f}
+        self.normal_force_fix = np.zeros(self.normal_force_grid.shape)
+        self.z_less = 1
 
     def step(self, vel_vec: Dict[str, float], p_x_y: Callable[[float, float], float]) -> Dict[str, float]:
         """
@@ -200,7 +202,7 @@ class PlanarFriction(object):
                 elif z_norm <= z_max:
                     alpha[i_x, i_y] = 0.5 * np.sin((z_norm - (z_max - z_ba)/2)/(z_max-z_ba)) + 0.5
                 else:
-                    alpha[i_x, i_y] = 1
+                    alpha[i_x, i_y] = 0
 
                 if v_norm[i_x, i_y] != 0 and z_norm != 0:
                     v_unit = self.velocity_grid[:, i_x, i_y] / v_norm[i_x, i_y]
@@ -210,9 +212,13 @@ class PlanarFriction(object):
                     alpha[i_x, i_y] = eps*alpha[i_x, i_y]
 
 
+
         dz = self.velocity_grid - alpha*self.lugre['z'] * (self.p['s0'] * (v_norm / g))
 
-        dz = np.clip(abs(dz), np.zeros((2, 20, 20)), abs(delta_z)) * np.sign(dz)
+        dz_2 = self.velocity_grid - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
+
+
+        dz = np.clip(abs(dz), np.zeros((2, 20, 20)), abs(delta_z)) * np.sign(dz_2)
         self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz + self.p[
             's2'] * self.velocity_grid) * self.normal_force_grid
 

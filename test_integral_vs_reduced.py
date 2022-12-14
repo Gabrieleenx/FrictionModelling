@@ -5,7 +5,7 @@ from friction_simple import PlanarFrictionReduced
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from pre_compute_ls import CustomHashList
-dt = 1e-4
+dt = 1e-3
 properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
               'mu_c': 1,
@@ -128,8 +128,11 @@ def vel_gen_5(t):
     elif t < 0.7:
         tau = 30 * 0.1
         vn = 0.02 + (t - 0.6)
+    elif t < 0.9:
+        vn = 0.12 - (t-0.7)
+        tau = 30 * 0.1
     elif t < 8:
-        vn = 0.12
+        vn = -0.08
         tau = 30 * 0.1
     else:
         vn = 0
