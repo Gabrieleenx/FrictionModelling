@@ -187,7 +187,7 @@ class PlanarFriction(object):
 
         v_norm1 = v_norm.copy()
         v_norm1[v_norm1 == 0] = 1
-        luGre_ss = self.velocity_grid / (self.p['s0'] * (v_norm1 / g))
+        luGre_ss = self.velocity_grid*g / (self.p['s0'] * v_norm1)
         delta_z = (luGre_ss - self.lugre['z']) / self.p['dt']
 
         alpha = np.zeros(self.p['grid_shape'])
@@ -202,7 +202,7 @@ class PlanarFriction(object):
                 elif z_norm <= z_max:
                     alpha[i_x, i_y] = 0.5 * np.sin((z_norm - (z_max - z_ba)/2)/(z_max-z_ba)) + 0.5
                 else:
-                    alpha[i_x, i_y] = 0
+                    alpha[i_x, i_y] = 1
 
                 if v_norm[i_x, i_y] != 0 and z_norm != 0:
                     v_unit = self.velocity_grid[:, i_x, i_y] / v_norm[i_x, i_y]

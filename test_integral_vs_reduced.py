@@ -5,7 +5,7 @@ from friction_simple import PlanarFrictionReduced
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from pre_compute_ls import CustomHashList
-dt = 1e-3
+dt = 1e-4
 properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
               'mu_c': 1,
@@ -172,7 +172,7 @@ def main():
         data[5, i] = vel['y']
         data[6, i] = vel['tau']
 
-        f = planar_lugre_reduced.step_ellipse_stable(vel_vec=vel, p_x_y=p_x_y2, gamma=0.00764477848712988,
+        f = planar_lugre_reduced.step_ellipse_stable_elasto_plastic(vel_vec=vel, p_x_y=p_x_y2, gamma=0.00764477848712988,
                                               norm_ellipse=ls_approx.get_interpolation(np.linalg.norm([vel['x'],
                                                                                                        vel['x']]),
                                                                                        abs(vel['tau'])))
