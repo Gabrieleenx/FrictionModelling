@@ -39,8 +39,6 @@ class PlanarFriction(object):
         z = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))  # bristles
         f = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))  # tangential force at each grid cell
         self.lugre = {'z': z, 'f': f}
-        self.normal_force_fix = np.zeros(self.normal_force_grid.shape)
-        self.z_less = 1
 
     def step(self, vel_vec: Dict[str, float], p_x_y: Callable[[float, float], float]) -> Dict[str, float]:
         """
