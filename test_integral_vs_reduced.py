@@ -6,19 +6,19 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from pre_compute_ls import CustomHashList
 from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
-dt = 1e-4
+dt = 1e-3
 properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
               'mu_c': 1,
-              'mu_s': 1.5,
+              'mu_s': 1.3,
               'v_s': 1e-3,
               'alpha': 2,
-              's0': 1e4,
+              's0': 1e5,
               's1': 2e1,
               's2': 0,
               'dt': dt,
-              'stability': False,
-              'elasto_plastic': False,
+              'stability': True,
+              'elasto_plastic': True,
               'z_ba_ratio': 0.9,
               'steady_state': False}
 
@@ -149,32 +149,33 @@ def vel_gen_5(t):
     return vel
 
 def main():
-    planar_lugre_ = PlanarFriction(properties=properties)
+    #planar_lugre = PlanarFriction(properties=properties)
 
-    planar_lugre = PlanarFriction(properties=properties2)
+    #planar_lugre2 = PlanarFriction(properties=properties2)
     planar_lugre2 = FullFrictionModel(properties=properties)
     planar_lugre3 = ReducedFrictionModel(properties=properties, nr_ls_segments=100)
 
     planar_lugre2.update_p_x_y(p_x_y2)
+
     planar_lugre3.update_p_x_y(p_x_y2)
     planar_lugre3.update_pre_compute()
 
-    planar_lugre_reduced = PlanarFrictionReduced(properties=properties3)
+    planar_lugre_reduced = PlanarFrictionReduced(properties=properties)
     time = 1
     n_steps = int(time/properties['dt'])
     data = np.zeros((8, n_steps))  # t, fx, fy, f_tau, vx, vy, v_tau, gamma
     data_reduced = np.zeros((8, n_steps))  # t, fx, fy, f_tau, vx, vy, v_tau, gamma
 
-    ls_approx = CustomHashList(100)
+    #ls_approx = CustomHashList(100)
 
-    ls_approx.initialize(planar_lugre, p_x_y2)
+    #ls_approx.initialize(planar_lugre2, p_x_y2)
 
     for i in tqdm(range(n_steps)):
         data[0, i] = i * properties['dt']
 
         vel = vel_gen_5(i * properties['dt'])
-        f = planar_lugre_.step(vel_vec=vel, p_x_y=p_x_y2)
-        #f = planar_lugre2.step(vel_vec=vel)
+        #f = planar_lugre.step(vel_vec=vel, p_x_y=p_x_y2)
+        f = planar_lugre2.step(vel_vec=vel)
 
         data[1, i] = f['x']
         data[2, i] = f['y']
@@ -184,12 +185,12 @@ def main():
         data[5, i] = vel['y']
         data[6, i] = vel['tau']
 
-        f = planar_lugre_reduced.step_ellipse(vel_vec=vel, p_x_y=p_x_y2, gamma=0.00764477848712988,
-                                              norm_ellipse=ls_approx.get_interpolation(np.linalg.norm([vel['x'],
-                                                                                                       vel['y']]),
-                                                                                       abs(vel['tau'])))
+        #f = planar_lugre_reduced.step_ellipse(vel_vec=vel, p_x_y=p_x_y2, gamma=0.00764477848712988,
+        #                                      norm_ellipse=ls_approx.get_interpolation(np.linalg.norm([vel['x'],
+        #                                                                                               vel['y']]),
+        #                                                                               abs(vel['tau'])))
 
-        #f = planar_lugre3.step(vel_vec=vel)
+        f = planar_lugre3.step(vel_vec=vel)
         data_reduced[1, i] = f['x']
         data_reduced[2, i] = f['y']
         data_reduced[3, i] = f['tau']

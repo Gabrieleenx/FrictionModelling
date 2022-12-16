@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from typing import Dict
-from frictionModels.utils import elasto_plastic_alpha, CustomHashList
+from frictionModels.utils import elasto_plastic_alpha, CustomHashList, update_radius, update_viscus_scale, vel_to_cop
 
 """
 properties = {'grid_shape': (21, 21),  # number of grid elements in x any
@@ -10,7 +10,7 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               'mu_s': 1.3,
               'v_s': 1e-3,
               'alpha': 2,
-              's0': 1e4,
+              's0': 1e5,
               's1': 2e1,
               's2': 0.4,
               'dt': 1e-4,
@@ -97,18 +97,18 @@ class FrictionBase(object):
         :param steady_state:
         :return:
         """
-        self.p['mu_c'] = mu_c if (mu_c is None) else self.p['mu_c']
-        self.p['mu_s'] = mu_s if (mu_s is None) else self.p['mu_s']
-        self.p['v_s'] = v_s if (v_s is None) else self.p['v_s']
-        self.p['alpha'] = alpha if (alpha is None) else self.p['alpha']
-        self.p['s0'] = s0 if (s0 is None) else self.p['s0']
-        self.p['s1'] = s1 if (s1 is None) else self.p['s1']
-        self.p['s2'] = s2 if (s2 is None) else self.p['s2']
-        self.p['dt'] = dt if (dt is None) else self.p['dt']
-        self.p['stability'] = stability if (stability is None) else self.p['stability']
-        self.p['elasto_plastic'] = elasto_plastic if (elasto_plastic is None) else self.p['elasto_plastic']
-        self.p['z_ba_ratio'] = z_ba_ratio if (z_ba_ratio is None) else self.p['z_ba_ratio']
-        self.p['steady_state'] = steady_state if (steady_state is None) else self.p['steady_state']
+        self.p['mu_c'] = mu_c if (mu_c is not None) else self.p['mu_c']
+        self.p['mu_s'] = mu_s if (mu_s is not None) else self.p['mu_s']
+        self.p['v_s'] = v_s if (v_s is not None) else self.p['v_s']
+        self.p['alpha'] = alpha if (alpha is not None) else self.p['alpha']
+        self.p['s0'] = s0 if (s0 is not None) else self.p['s0']
+        self.p['s1'] = s1 if (s1 is not None) else self.p['s1']
+        self.p['s2'] = s2 if (s2 is not None) else self.p['s2']
+        self.p['dt'] = dt if (dt is not None) else self.p['dt']
+        self.p['stability'] = stability if (stability is not None) else self.p['stability']
+        self.p['elasto_plastic'] = elasto_plastic if (elasto_plastic is not None) else self.p['elasto_plastic']
+        self.p['z_ba_ratio'] = z_ba_ratio if (z_ba_ratio is not None) else self.p['z_ba_ratio']
+        self.p['steady_state'] = steady_state if (steady_state is not None) else self.p['steady_state']
 
 
 class FullFrictionModel(FrictionBase):
@@ -167,7 +167,7 @@ class FullFrictionModel(FrictionBase):
 
         if self.p['stability']:
             delta_z = (z_ss - self.lugre['z']) / self.p['dt']
-            #dz = np.min([abs(dz), abs(delta_z)], axis=0)*np.sign(dz1)
+            dz = np.min([abs(dz), abs(delta_z)], axis=0)*np.sign(dz1)
 
         self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
                            self.p['s2'] * self.velocity_grid) * self.normal_force_grid
@@ -200,7 +200,7 @@ class FullFrictionModel(FrictionBase):
 
 
 class ReducedFrictionModel(FrictionBase):
-    def __init__(self, properties: Dict[str, any], nr_ls_segments):
+    def __init__(self, properties: Dict[str, any], nr_ls_segments: int = 100, ls_active: bool = True):
         super().__init__(properties)
         self.gamma = 0.00764477848712988
         self.limit_surface = CustomHashList(nr_ls_segments)
@@ -208,6 +208,7 @@ class ReducedFrictionModel(FrictionBase):
         self.p_x_y = None
         self.full_model = self.initialize_full_model()
         self.lugre = self.initialize_lugre()
+        self.ls_active = ls_active
 
     def step(self, vel_vec: Dict[str, float]) -> Dict[str, float]:
         """
@@ -216,7 +217,7 @@ class ReducedFrictionModel(FrictionBase):
         :return:
         """
 
-        vel_cop = self.vel_to_cop(vel_vec)
+        vel_cop = vel_to_cop(self.cop, vel_vec)
 
         self.update_lugre(vel_cop)
 
@@ -244,16 +245,23 @@ class ReducedFrictionModel(FrictionBase):
         self.update_cop_and_force_grid(p_x_y)
 
     def update_pre_compute(self):
+        # limit surface
         self.full_model.update_p_x_y(self.p_x_y)
-        self.limit_surface.initialize(self.full_model)
+        self.limit_surface.initialize(self.full_model, self.cop)
+        # gamma radius
+        self.gamma = update_radius(self.full_model, self.fn, self.p['mu_c'], self.cop)
+        # viscus scale
+        self.viscous_scale = update_viscus_scale(self.full_model, self.gamma, self.cop)
 
     def update_lugre(self, vel_cop):
         vel_cop_tau = np.array([vel_cop['x'], vel_cop['y'], vel_cop['tau']*self.gamma])
         v_norm = np.linalg.norm(vel_cop_tau)
 
         g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * np.exp(- (v_norm / self.p['v_s']) ** self.p['alpha'])
-
-        beta = self.calc_beta(vel_cop, vel_cop_tau, v_norm)
+        if self.ls_active:
+            beta = self.calc_beta(vel_cop, vel_cop_tau, v_norm)
+        else:
+            beta = np.ones(3)
 
         if v_norm != 0:
             z_ss = (beta*vel_cop_tau*g) / (self.p['s0'] * v_norm)
@@ -303,6 +311,4 @@ class ReducedFrictionModel(FrictionBase):
 
         return np.array([beta_t, beta_t, beta_tau])
 
-    def vel_to_cop(self, vel_vec):
-        # TODO
-        return vel_vec
+

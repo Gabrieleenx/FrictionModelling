@@ -28,9 +28,9 @@ class CustomHashList(object):
     def add_to_list(self, idx, v1, v2):
         self.list[idx] = [v1, v2]
 
-    def initialize(self, friction_model):
-        f1 = friction_model.step(vel_vec={'x': 1, 'y': 0, 'tau': 0})
-        f2 = friction_model.step(vel_vec={'x': 0, 'y': 0, 'tau': 1})
+    def initialize(self, friction_model, cop):
+        f1 = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': 1, 'y': 0, 'tau': 0}))
+        f2 = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': 0, 'y': 0, 'tau': 1}))
         f_max = np.linalg.norm([f1['x'], f1['y']])
         tau_max = abs(f2['tau'])
 
@@ -38,14 +38,15 @@ class CustomHashList(object):
             r1, r2 = self.get_ratio_pairs(i)
             w1 = np.sqrt(1/(1 + r1**2))
             v1 = self.vel_scale * np.sqrt(1 - w1**2)
-            f = friction_model.step(vel_vec={'x': v1, 'y': 0, 'tau': w1})
+            f = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': v1, 'y': 0, 'tau': w1}))
             f1 = np.array([np.linalg.norm([f['x'], f['y']])/f_max, abs(f['tau'])/tau_max])
 
             w2 = np.sqrt(1 / (1 + r2 ** 2))
             v2 = self.vel_scale * np.sqrt(1 - w2 ** 2)
-            f = friction_model.step(vel_vec={'x': v2, 'y': 0, 'tau': w2})
+            f = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': v2, 'y': 0, 'tau': w2}))
             f2 = np.array([np.linalg.norm([f['x'], f['y']]) / f_max, abs(f['tau']) / tau_max])
             self.add_to_list(i, f1, f2)
+
 
 def elasto_plastic_alpha(z, z_ss, z_ba_r, v):
     """
@@ -76,3 +77,47 @@ def elasto_plastic_alpha(z, z_ss, z_ba_r, v):
         alpha = eps * alpha
 
     return alpha
+
+
+def update_radius(full_model, fn, mu, cop):
+
+    vel_vec_ = {'x': 0, 'y': 0, 'tau': 1}
+    vel_vec = vel_to_cop(-cop, vel_vec_)
+
+    f = full_model.step(vel_vec)
+
+    if fn != 0:
+        gamma = abs(f['tau'])/(mu*fn)
+    else:
+        gamma = 0
+
+    return gamma
+
+
+def update_viscus_scale(full_model, gamma, cop):
+    mu_c = full_model.p['mu_c']
+    mu_s = full_model.p['mu_s']
+    s2 = full_model.p['s2']
+
+    full_model.update_properties(mu_c=0, mu_s=0, s2=1)
+    vel_vec_ = {'x': 0, 'y': 0, 'tau': 1}
+    vel_vec = vel_to_cop(-cop, vel_vec_)
+    m = full_model.fn * gamma**2
+    f = full_model.step(vel_vec)
+    s = abs(f['tau']/m)
+
+    # reset parameter back
+    full_model.update_properties(mu_c=mu_c, mu_s=mu_s, s2=s2)
+    return np.array([1, 1, s])
+
+
+def vel_to_cop(cop, vel_vec):
+    u = np.array([0, 0, 1])
+    w = vel_vec['tau'] * u
+    pos_vex = np.zeros(3)
+    pos_vex[0:2] = cop
+    v_tau = np.cross(w, pos_vex)
+    v_x = vel_vec['x'] + v_tau[0]
+    v_y = vel_vec['y'] + v_tau[1]
+    v_tau = vel_vec['tau']
+    return {'x': v_x, 'y': v_y, 'tau': v_tau}
