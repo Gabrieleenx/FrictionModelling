@@ -186,7 +186,7 @@ def main():
 
         f = planar_lugre_reduced.step_ellipse(vel_vec=vel, p_x_y=p_x_y2, gamma=0.00764477848712988,
                                               norm_ellipse=ls_approx.get_interpolation(np.linalg.norm([vel['x'],
-                                                                                                       vel['x']]),
+                                                                                                       vel['y']]),
                                                                                        abs(vel['tau'])))
 
         #f = planar_lugre3.step(vel_vec=vel)
