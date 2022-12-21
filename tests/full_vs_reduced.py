@@ -22,7 +22,7 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               'steady_state': False}
 
 shape = surf.p_square
-time = 1
+time = 4
 
 n_steps = int(time / properties['dt'])
 
@@ -45,7 +45,7 @@ data_reduced = np.zeros((4, n_steps))  # t, fx, fy, f_tau
 
 for i in tqdm(range(n_steps)):
     t = i * properties['dt']
-    vel = vel_gen_5(t)
+    vel = vel_gen_6(2*t)
     data_vel[0, i] = t
     data_vel[1, i] = vel['x']
     data_vel[2, i] = vel['y']
