@@ -1,5 +1,7 @@
 import numpy as np
 from dash import Dash, html, dcc, Input, Output
+from plotly.subplots import make_subplots
+
 import plotly.graph_objects as go
 from friction import PlanarFriction
 from friction_simple import PlanarFrictionReduced
@@ -156,9 +158,8 @@ app.layout = html.Div([
 
 
 @app.callback(
-    Output('3d_force', 'figure'),
-    Output('3d_torque', 'figure'),
-    Output('3d_gamma', 'figure'),
+    [Output('3d_torque', 'figure'),
+     Output('3d_torque', 'config')],
     Input('friction_model', 'value'),
     Input('shape', 'value'),
     Input('linear_vel_range', 'value'),
@@ -282,7 +283,7 @@ def update_3d_force(model,
                 t_surf_red_no_g_ellipse[x_, y_] = abs(f['tau'])
 
 
-    fig_force = go.Figure()
+    fig_force = make_subplots()
     fig_torque = go.Figure()
 
     if 'Full' in model:
@@ -329,12 +330,17 @@ def update_3d_force(model,
                           zaxis_title='radius'),
                       margin=dict(l=0, r=0, b=0, t=30),
                       uirevision=True)
-
-    return fig_force, fig_torque, fig_gamma
+    config = {
+        'toImageButtonOptions': {
+            'format': 'svg',  # one of png, svg, jpeg, webp
+        }
+    }
+    return [fig_torque, config]
 
 
 @app.callback(
-    Output('contact_surface_plt', 'figure'),
+    [Output('contact_surface_plt', 'figure'),
+     Output('contact_surface_plt', 'config')],
     Input('shape', 'value'),
     Input('linear_vel_value', 'value'),
     Input('angular_vel_value', 'value'),
@@ -440,11 +446,17 @@ def update_contact(shape,
                 arrows += [arrow]
         fig.update_layout(annotations=arrows)
 
-    return fig
+    config = {
+        'toImageButtonOptions': {
+            'format': 'svg',  # one of png, svg, jpeg, webp
+        }
+    }
+    return [fig, config]
 
 
 @app.callback(
-    Output('ellipsoid', 'figure'),
+    [Output('ellipsoid', 'figure'),
+     Output('ellipsoid', 'config')],
     Input('linear_vel_value', 'value'),
     Input('angular_vel_value', 'value'),
     Input('grid_shape', 'value'),
@@ -497,13 +509,14 @@ def update_ellipse(lin_vel,
         data = data.T/np.max(data, axis=1)
         data = data.T
         fig.add_trace(go.Scatter(x=data[0, :], y=data[1, :], name=str(shape_)))
+    """
 
     fig.update_layout(yaxis=dict(scaleanchor="x", scaleratio=1),
                       xaxis_title="Force",
                       yaxis_title="Torque",
                       margin=dict(l=10, r=10, b=30, t=30),
                       uirevision=True)
-    """
+
 
     data = np.zeros((2, num))
     for i in range(num):
@@ -516,15 +529,9 @@ def update_ellipse(lin_vel,
     data = data.T
     fig.add_trace(go.Scatter(x=data[0, :], y=data[1, :], name=str('Limit surface square')))
 
-
     x = np.linspace(0,1,100)
     y = np.sqrt(1 - x**2)
     fig.add_trace(go.Scatter(x=x, y=y, name='ellipse'))
-
-
-
-
-
 
     arrows = []
     f = planar_lugre.steady_state(vel_vec={'x': lin_vel, 'y': 0, 'tau': ang_vel},
@@ -570,9 +577,12 @@ def update_ellipse(lin_vel,
              }
     arrows += [arrow]
     fig.update_layout(annotations=arrows)
-
-
-    return fig
+    config = {
+        'toImageButtonOptions': {
+            'format': 'svg',  # one of png, svg, jpeg, webp
+        }
+    }
+    return [fig, config]
 
 if __name__ == '__main__':
     app.run_server(debug=True)

@@ -181,7 +181,7 @@ def main():
         data_reduced[3, i] = f['tau']
         data_reduced[7, i] = f['gamma']
 
-    f, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(12, 8))
+    f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 8))
 
     ax1.plot(data[0, :], data[1, :], alpha=0.7, label='fx')
     ax1.plot(data[0, :], data[2, :], alpha=0.7, label='fy')
@@ -204,11 +204,6 @@ def main():
     ax4.plot(data[0, :], data[6, :], label='vTau')
     ax4.set_title('Velocity profile')
     ax4.legend()
-
-
-    ax5.plot(data[0, :], data_reduced[7, :], label='gamma')
-    ax5.set_title('gamma radius')
-    ax5.legend()
 
     plt.tight_layout()
     plt.show()
