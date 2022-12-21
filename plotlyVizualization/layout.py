@@ -7,13 +7,23 @@ def get_layout():
             html.Div([
                 html.Label('Friction Model'),
                 dcc.Checklist(
-                    ['Full', 'Reduced', 'Reduced + gamma', 'Gamma_max', 'Ellipse comp'],
+                    ['Full', 'Reduced with LS', 'Reduced with ellipse'],
                     ['Full'],
                     id='friction_model',
                     labelStyle={'display': 'inline-block', 'marginTop': '5px'}
-                )
+                )],
+                style={'width': '24%', 'display': 'inline-block'}),
+            html.Div([
+                dcc.Dropdown(id='format_dropdown',
+                 options=[
+                            {'label': 'JPEG', 'value': 'jpeg'},
+                            {'label': 'PNG', 'value': 'png'},
+                            {'label': 'SVG', 'value': 'svg'},
+                            {'label': 'WebP', 'value': 'webp'}
+                         ],
+                 value='png'),
             ],
-            style={'width': '49%', 'display': 'inline-block'}),
+            style={'width': '24%', 'display': 'inline-block'}),
 
             html.Div([
                 html.Label('Contact Surface'),
@@ -39,11 +49,11 @@ def get_layout():
         html.Div([
             html.Div([
                 dcc.Graph(id='3d_force'),
-                dcc.Graph(id='3d_torque')
+                dcc.Store(id='store_surface_data')
             ], style={'width': '49%', 'display': 'inline-block', 'padding': '0 20'}),
             html.Div([
-                dcc.Graph(id='contact_surface_plt'),
-                dcc.Graph(id='3d_gamma'),
+                dcc.Graph(id='3d_torque'),
+
             ], style={'display': 'inline-block', 'width': '49%'}),
         ], style={
             'padding': '10px 5px'
@@ -55,8 +65,6 @@ def get_layout():
                 dcc.RangeSlider(0, 0.2, id='linear_vel_range',  value=[0, 0.07], allowCross=False),
                 html.Label('Angular vel range'),
                 dcc.RangeSlider(0, 20, id='angular_vel_range', value=[0, 3], allowCross=False),
-                html.Label('gamma'),
-                dcc.Slider(0, 0.02, id='gamma', value=0.008),
             ], style={'display': 'inline-block', 'width': '49%'}),
 
             html.Div([
@@ -64,6 +72,8 @@ def get_layout():
                 dcc.Slider(0, 0.2, id='linear_vel_value', value=0.02),
                 html.Label('Angular vel'),
                 dcc.Slider(0, 5, id='angular_vel_value', value=3),
+                html.Label('Ratio'),
+                dcc.Slider(0, 1, id='ratio', value=0.5),
             ], style={'display': 'inline-block', 'width': '49%'})
         ], style={
             'padding': '10px 5px'
@@ -91,11 +101,14 @@ def get_layout():
         dcc.Input(id="s2", value=0.4, type="number", min=0),
         html.Label('resolution'),
         dcc.Input(id="resolution", value=40, type="number", min=0, step=1),
-        ], style={'display': 'inline-block', 'width': '49%'}),
+        ], style={'display': 'inline-block', 'width': '20%'}),
 
         html.Div([
+            dcc.Graph(id='contact_surface_plt'),
+        ], style={'display': 'inline-block', 'width': '39%'}),
+        html.Div([
             dcc.Graph(id='ellipsoid'),
-        ], style={'display': 'inline-block', 'width': '49%'}),
+        ], style={'display': 'inline-block', 'width': '39%'}),
     ])
 
     return layout

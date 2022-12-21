@@ -1,5 +1,5 @@
 import numpy as np
-from utils import create_circular_mask
+from surfaces.utils import create_circular_mask
 
 def p_square(M):
     return np.ones(M[1, :, :].shape) * 1e3
