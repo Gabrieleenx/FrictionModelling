@@ -68,6 +68,20 @@ class FrictionBase(object):
 
         return {'x': force_at_cop['x'], 'y': force_at_cop['y'], 'tau': force_at_cop['tau'] + m}
 
+    def move_force_to_cop(self, force_at_center):
+        f_t = np.array([force_at_center['x'], force_at_center['y']])
+        m = 0
+        f_t_n = np.linalg.norm(f_t)
+
+        if f_t_n != 0:
+            d = np.linalg.norm(np.cross(self.cop, f_t)) / f_t_n
+            if np.cross(f_t, -self.cop) > 0:  # left side of force
+                m = d * f_t_n
+            else:
+                m = - d * f_t_n
+
+        return {'x': force_at_center['x'], 'y': force_at_center['y'], 'tau': force_at_center['tau'] + m}
+
     def update_properties(self,
                           mu_c: float = None,
                           mu_s: float = None,
@@ -158,16 +172,15 @@ class FullFrictionModel(FrictionBase):
                 's2'] * self.velocity_grid) * self.normal_force_grid
             return
 
-        dz = self.velocity_grid - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
-        dz1 = dz
-
         if self.p['elasto_plastic']:
             alpha = self.elasto_plastic(z_ss)
             dz = self.velocity_grid - alpha * self.lugre['z'] * (self.p['s0'] * (v_norm / g))
+        else:
+            dz = self.velocity_grid - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
 
         if self.p['stability']:
             delta_z = (z_ss - self.lugre['z']) / self.p['dt']
-            dz = np.min([abs(dz), abs(delta_z)], axis=0)*np.sign(dz1)
+            dz = np.min([abs(dz), abs(delta_z)], axis=0)*np.sign(dz)
 
         self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
                            self.p['s2'] * self.velocity_grid) * self.normal_force_grid
@@ -227,6 +240,26 @@ class ReducedFrictionModel(FrictionBase):
 
         return force
 
+    def step_steady_state(self, vel_vec: Dict[str, float], force_vec: Dict[str, float]) -> [Dict[str, float], float]:
+        """
+        This function calculates the steady state friction and return the friction that is within the limit surface
+        together with the distance to the limit surface. The ratio is between [0, 1], at 0 you are in the origin and at
+        1 you are on the limit surface. To get the force on the limit surface one can use the input force_vec/ratio,
+        this is only true for when ||vel_vec|| = 0.
+        :param vel_vec:
+        :param force_vec:
+        :return: [force_vec, ratio]
+        """
+        vel_cop = vel_to_cop(self.cop, vel_vec)
+
+        force_at_cop = self.move_force_to_cop(force_vec)
+
+        force_at_cop, ratio_to_slip = self.steady_state(vel_cop, force_at_cop)
+
+        force = self.move_force_to_center(force_at_cop)
+
+        return [force, ratio_to_slip]
+
     def initialize_full_model(self):
         properties = copy.deepcopy(self.p)
         properties['mu_c'] = 1
@@ -273,20 +306,20 @@ class ReducedFrictionModel(FrictionBase):
             self.lugre['f'][2] = self.lugre['f'][2] * self.gamma
             return
 
-        dz = beta*vel_cop_tau - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
-        dz1 = dz
 
         if self.p['elasto_plastic']:
             alpha = elasto_plastic_alpha(self.lugre['z'],
                                          z_ss,
                                          self.p['z_ba_ratio'],
                                          vel_cop_tau)
-
-            dz = beta*vel_cop_tau - alpha * self.lugre['z'] * (self.p['s0'] * (v_norm / g))
+        else:
+            alpha = 1
+        dz = beta * vel_cop_tau - alpha * self.lugre['z'] * (self.p['s0'] * (v_norm / g))
 
         if self.p['stability']:
             delta_z = (z_ss - self.lugre['z']) / self.p['dt']
-            dz = np.min([abs(dz), abs(delta_z)], axis=0) * np.sign(dz1)
+
+            dz = np.min([abs(dz), abs(delta_z)], axis=0) * np.sign(dz)
 
         self.lugre['f'] = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
                             self.viscous_scale * self.p['s2'] * vel_cop_tau) * self.fn
@@ -311,4 +344,9 @@ class ReducedFrictionModel(FrictionBase):
 
         return np.array([beta_t, beta_t, beta_tau])
 
+
+    def steady_state(self, vel_cop, force_at_cop):
+        force_vec = {}
+        ratio = 0
+        return force_vec, ratio
 

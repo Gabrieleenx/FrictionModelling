@@ -7,6 +7,8 @@ class CustomHashList(object):
         self.scl = 2*self.num_segments/np.pi
         self.list = [0]*self.num_segments
         self.vel_scale = 0.01
+        self.f_max = 0
+        self.tau_max = 0
 
     def get_closest_samples(self, vel, omega):
         a = np.arctan2(abs(vel/self.vel_scale), abs(omega)) * self.scl
@@ -31,20 +33,20 @@ class CustomHashList(object):
     def initialize(self, friction_model, cop):
         f1 = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': 1, 'y': 0, 'tau': 0}))
         f2 = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': 0, 'y': 0, 'tau': 1}))
-        f_max = np.linalg.norm([f1['x'], f1['y']])
-        tau_max = abs(f2['tau'])
+        self.f_max = np.linalg.norm([f1['x'], f1['y']])
+        self.tau_max = abs(f2['tau'])
 
         for i in range(self.num_segments):
             r1, r2 = self.get_ratio_pairs(i)
             w1 = np.sqrt(1/(1 + r1**2))
             v1 = self.vel_scale * np.sqrt(1 - w1**2)
             f = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': v1, 'y': 0, 'tau': w1}))
-            f1 = np.array([np.linalg.norm([f['x'], f['y']])/f_max, abs(f['tau'])/tau_max])
+            f1 = np.array([np.linalg.norm([f['x'], f['y']])/self.f_max, abs(f['tau'])/self.tau_max])
 
             w2 = np.sqrt(1 / (1 + r2 ** 2))
             v2 = self.vel_scale * np.sqrt(1 - w2 ** 2)
             f = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': v2, 'y': 0, 'tau': w2}))
-            f2 = np.array([np.linalg.norm([f['x'], f['y']]) / f_max, abs(f['tau']) / tau_max])
+            f2 = np.array([np.linalg.norm([f['x'], f['y']]) / self.f_max, abs(f['tau']) / self.tau_max])
             self.add_to_list(i, f1, f2)
 
 
@@ -64,7 +66,7 @@ def elasto_plastic_alpha(z, z_ss, z_ba_r, v):
     if z_norm <= z_ba:
         alpha = 0
     elif z_norm <= z_max:
-        alpha = 0.5 * np.sin((z_norm - (z_max - z_ba) / 2) / (z_max - z_ba)) + 0.5
+        alpha = 0.5 * np.sin(np.pi*((z_norm - (z_max + z_ba) / 2) / (z_max - z_ba))) + 0.5
     else:
         alpha = 1
 

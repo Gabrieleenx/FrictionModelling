@@ -15,14 +15,14 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               's0': 1e5,
               's1': 2e1,
               's2': 0.4,
-              'dt': 1e-4,
+              'dt': 1e-3,
               'stability': True,
-              'elasto_plastic': False,
+              'elasto_plastic': True,
               'z_ba_ratio': 0.9,
               'steady_state': False}
 
 shape = surf.p_square
-time = 4
+time = 1
 
 n_steps = int(time / properties['dt'])
 
@@ -45,7 +45,7 @@ data_reduced = np.zeros((4, n_steps))  # t, fx, fy, f_tau
 
 for i in tqdm(range(n_steps)):
     t = i * properties['dt']
-    vel = vel_gen_6(2*t)
+    vel = vel_gen_5(t)
     data_vel[0, i] = t
     data_vel[1, i] = vel['x']
     data_vel[2, i] = vel['y']
@@ -84,7 +84,7 @@ ax2.set_ylabel('Torque [Nm]')
 ax2.legend()
 
 ax3.plot(data_vel[0, :], data_vel[1, :], label='vx')
-ax3.plot(data_vel[0, :], data_vel[2, :], label='yx')
+ax3.plot(data_vel[0, :], data_vel[2, :], label='vy')
 ax3.set_title('Velocity profile')
 ax3.set_xlabel('Time')
 ax3.set_ylabel('Velocity [m/s]')
