@@ -1,3 +1,4 @@
+import numpy as np
 from dash import html, dcc, Input, Output
 
 
@@ -38,7 +39,7 @@ def get_layout():
             html.Div([
 
                 html.Label('Shape'),
-                dcc.Dropdown(['Square', 'Circle', 'Line'], 'Square', id='shape'),
+                dcc.Dropdown(['Square', 'Circle', 'Line', 'LineGrad'], 'Square', id='shape'),
 
             ], style={'width': '24%', 'float': 'right', 'display': 'inline-block'}),
         ], style={
@@ -70,6 +71,8 @@ def get_layout():
             html.Div([
                 html.Label('Linear vel'),
                 dcc.Slider(0, 0.2, id='linear_vel_value', value=0.02),
+                html.Label('Direction'),
+                dcc.Slider(0, 2*np.pi, id='direction_value', value=0.0),
                 html.Label('Angular vel'),
                 dcc.Slider(0, 5, id='angular_vel_value', value=3),
                 html.Label('Ratio'),
@@ -88,7 +91,7 @@ def get_layout():
         html.Label('mu_c'),
         dcc.Input(id="mu_c", value=1, type="number", min=0),
         html.Label('mu_s'),
-        dcc.Input(id="mu_s", value=1.5, type="number", min=0),
+        dcc.Input(id="mu_s", value=1, type="number", min=0),
         html.Label('v_s'),
         dcc.Input(id="v_s", value=1e-2, type="number", min=0),
         html.Label('alpha'),
@@ -98,7 +101,7 @@ def get_layout():
         html.Label('s1'),
         dcc.Input(id="s1", value=2e1, type="number", min=0),
         html.Label('s2'),
-        dcc.Input(id="s2", value=0.4, type="number", min=0),
+        dcc.Input(id="s2", value=0, type="number", min=0),
         html.Label('resolution'),
         dcc.Input(id="resolution", value=40, type="number", min=0, step=1),
         ], style={'display': 'inline-block', 'width': '20%'}),
@@ -109,6 +112,9 @@ def get_layout():
         html.Div([
             dcc.Graph(id='ellipsoid'),
         ], style={'display': 'inline-block', 'width': '39%'}),
+
+        html.Div([dcc.Graph(id='limit surface'),
+                  ], style={'display': 'inline-block', 'width': '85%'}),
     ])
 
     return layout

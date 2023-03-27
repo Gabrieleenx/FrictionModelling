@@ -50,6 +50,129 @@ class CustomHashList(object):
             self.add_to_list(i, f1, f2)
 
 
+class CustomHashList3D(object):
+    def __init__(self, num_segments):
+        """
+        :param num_segments: Number of segments per quadrant
+        """
+        self.num_segments = num_segments
+        self.list = [None]*4*self.num_segments*self.num_segments
+        self.cop = np.zeros(2)
+        self.gamma = 1
+        self.omega_max = 1
+    def get_closest_samples(self):
+        pass
+
+    def get_bilinear_interpolation(self, vel):
+        """
+
+        :param vel:
+        :return:
+        """
+        pass
+
+    def calc_new_vel(self, vel_cop):
+        # TODO
+        return vel_cop
+
+    def get_limit_surface(self, vel, gamma):
+        vel_cop = vel_to_cop(self.cop, vel)
+        f = self.get_bilinear_interpolation(vel_cop)
+        vel_hat_cop = self.calc_new_vel(vel_cop)
+        vel_hat = vel_to_cop(-self.cop, vel_hat_cop)
+        return f, vel_hat
+
+    def get_if_calc(self, r, i, j):
+        state = False
+        value = None
+        if j == 0:
+            if i > 0:
+                idx = self.calc_idx(r, i-1)
+                value = self.list[idx][2]
+                return True, value
+            if r > 0:
+                idx = self.calc_idx(r - 1, i)
+                value = self.list[idx][1]
+                return True, value
+        elif j == 1:
+            if i > 0:
+                idx = self.calc_idx(r, i-1)
+                value = self.list[idx][0]
+                return True, value
+        elif j == 2:
+            if r > 0:
+                idx = self.calc_idx(r - 1, i)
+                value = self.list[idx][3]
+                return True, value
+
+        return state, value
+
+
+    def calc_vel(self, r, i, j):
+        v_max = self.gamma*self.omega_max
+        if j == 0 or j == 1:
+            v = v_max * i / (self.num_segments+1)
+            vtau = self.omega_max * (self.num_segments + 1 - i) / (self.num_segments+1)
+        else:
+            v = v_max * (i + 1) / (self.num_segments + 1)
+            vtau = self.omega_max * (self.num_segments - i) / (self.num_segments+1)
+
+        if j == 0 or j == 2:
+            d = 2*np.pi * r / (4 * self.num_segments+1)
+        else:
+            d = 2 * np.pi * (r+1) / (4 * self.num_segments + 1)
+
+        vx = np.cos(d)*v
+        vy = np.sin(d)*v
+        return vx, vy, vtau
+
+    def calc_idx(self, r, i):
+        return r*self.num_segments + i
+
+    def calc_4_points(self, friction_model, r, i):
+        """
+        Calculates the corners far a patch on the surface
+        :param friction_model:
+        :param r:
+        :param i:
+        :return:
+        """
+        f = [None]*4
+        idx = self.calc_idx(r, i)
+        for j in range(4):
+            state, value = self.get_if_calc(r, i, j)
+            if state:
+                f[i] = value
+            else:
+                vx, vy, vtau = self.calc_vel(r, i, j)
+                f[i] = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': vx, 'y': vy, 'tau': vtau}))
+        return f[0], f[1], f[2], f[3], idx
+
+    def add_to_list(self, idx, f1, f2, f3, f4):
+        self.list[idx] = [f1, f2, f3, f4]
+    def initialize(self, friction_model):
+        f1 = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 1, 'y': 0, 'tau': 0}))
+        f2 = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 0, 'y': 0, 'tau': 1}))
+        f_t_max = f1['x']
+        f_tau_max = f2['tau']
+        self.cop = friction_model.cop
+        self.gamma = update_radius(friction_model)
+        for r in range(4*self.num_segments):
+            # index for rotation/direction
+            for i in range(self.num_segments):
+                # index for ratio between tau and f
+                f1, f2, f3, f4, idx = self.calc_4_points(friction_model, r, i)
+                self.add_to_list(idx,
+                                 normalize_force(f1, f_t_max, f_tau_max),
+                                 normalize_force(f2, f_t_max, f_tau_max),
+                                 normalize_force(f3, f_t_max, f_tau_max),
+                                 normalize_force(f4, f_t_max, f_tau_max))
+
+
+def normalize_force(f, f_t_max, f_tau_max):
+    f_norm = {'x': f['x']/f_t_max, 'y': f['y']/f_t_max, 'tau': f['tau']/f_tau_max}
+    return f_norm
+
 def elasto_plastic_alpha(z, z_ss, z_ba_r, v):
     """
     Calculates the alpha for elasto plastic model.
@@ -81,8 +204,10 @@ def elasto_plastic_alpha(z, z_ss, z_ba_r, v):
     return alpha
 
 
-def update_radius(full_model, fn, mu, cop):
-
+def update_radius(full_model):
+    cop = full_model.cop
+    fn = full_model.fn
+    mu = full_model.p['mu_c']
     vel_vec_ = {'x': 0, 'y': 0, 'tau': 1}
     vel_vec = vel_to_cop(-cop, vel_vec_)
 
@@ -123,3 +248,4 @@ def vel_to_cop(cop, vel_vec):
     v_y = vel_vec['y'] + v_tau[1]
     v_tau = vel_vec['tau']
     return {'x': v_x, 'y': v_y, 'tau': v_tau}
+

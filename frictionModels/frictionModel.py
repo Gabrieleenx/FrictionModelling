@@ -29,6 +29,7 @@ class FrictionBase(object):
         self.x_pos_vec = self.get_pos_vector(0)
         self.y_pos_vec = self.get_pos_vector(0)
         self.pos_matrix, self.pos_matrix_2d = self.get_pos_matrix()
+        self.force_at_cop = None
 
     def get_pos_vector(self, i):
         return (np.arange(self.p['grid_shape'][i]) + 0.5 - self.p['grid_shape'][i] / 2) * self.p['grid_size']
@@ -56,31 +57,13 @@ class FrictionBase(object):
 
     def move_force_to_center(self, force_at_cop):
         f_t = np.array([force_at_cop['x'], force_at_cop['y']])
-        m = 0
-        f_t_n = np.linalg.norm(f_t)
-
-        if f_t_n != 0:
-            d = np.linalg.norm(np.cross(-self.cop, f_t)) / f_t_n
-            if np.cross(f_t, -self.cop) > 0:  # left side of force
-                m = d * f_t_n
-            else:
-                m = - d * f_t_n
-
+        m = np.cross(self.cop, f_t)
         return {'x': force_at_cop['x'], 'y': force_at_cop['y'], 'tau': force_at_cop['tau'] + m}
 
     def move_force_to_cop(self, force_at_center):
         f_t = np.array([force_at_center['x'], force_at_center['y']])
-        m = 0
-        f_t_n = np.linalg.norm(f_t)
-
-        if f_t_n != 0:
-            d = np.linalg.norm(np.cross(self.cop, f_t)) / f_t_n
-            if np.cross(f_t, -self.cop) > 0:  # left side of force
-                m = d * f_t_n
-            else:
-                m = - d * f_t_n
-
-        return {'x': force_at_center['x'], 'y': force_at_center['y'], 'tau': force_at_center['tau'] + m}
+        m = np.cross(self.cop, f_t)
+        return {'x': force_at_center['x'], 'y': force_at_center['y'], 'tau': force_at_center['tau'] - m}
 
     def update_properties(self,
                           mu_c: float = None,
@@ -138,14 +121,13 @@ class FullFrictionModel(FrictionBase):
         :return:
         """
         self.update_velocity_grid(vel_vec)
-
         self.update_lugre()
+        force_at_center = self.approximate_integral()
+        self.force_at_cop = self.move_force_to_cop(force_at_center)
 
-        force_at_cop = self.approximate_integral()
+        #force = self.move_force_to_center(self.force_at_cop)
 
-        force = self.move_force_to_center(force_at_cop)
-
-        return force
+        return force_at_center
 
     def update_p_x_y(self, p_x_y):
         self.update_cop_and_force_grid(p_x_y)
@@ -282,7 +264,7 @@ class ReducedFrictionModel(FrictionBase):
         self.full_model.update_p_x_y(self.p_x_y)
         self.limit_surface.initialize(self.full_model, self.cop)
         # gamma radius
-        self.gamma = update_radius(self.full_model, self.fn, self.p['mu_c'], self.cop)
+        self.gamma = update_radius(self.full_model)
         # viscus scale
         self.viscous_scale = update_viscus_scale(self.full_model, self.gamma, self.cop)
 

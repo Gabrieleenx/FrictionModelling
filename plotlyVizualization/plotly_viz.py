@@ -2,14 +2,15 @@ import numpy as np
 from dash import Dash, html, dcc, Input, Output
 import plotly.graph_objects as go
 from utils import *
+from frictionModels.utils import vel_to_cop
 from layout import get_layout
-from surfaces.surfaces import p_square, p_line, p_circle
+from surfaces.surfaces import p_square, p_line, p_circle, p_line_grad
 from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = Dash(__name__, external_stylesheets=external_stylesheets)
 
-shape_set = {'Square': p_square, 'Circle': p_circle, 'Line': p_line}
+shape_set = {'Square': p_square, 'Circle': p_circle, 'Line': p_line, 'LineGrad': p_line_grad}
 
 app.layout = get_layout()
 
@@ -152,7 +153,8 @@ def update_fig_force(data, format_value):
 
 
 @app.callback(
-    Output('contact_surface_plt', 'figure'),
+    [Output('contact_surface_plt', 'figure'),
+     Output('contact_surface_plt', 'config')],
     Input('shape', 'value'),
     Input('linear_vel_value', 'value'),
     Input('angular_vel_value', 'value'),
@@ -165,7 +167,10 @@ def update_fig_force(data, format_value):
     Input('s0', 'value'),
     Input('s1', 'value'),
     Input('s2', 'value'),
-    Input('contact_surface', 'value')
+    Input('contact_surface', 'value'),
+    Input('format_dropdown', 'value'),
+    Input('direction_value', 'value'),
+    Input('ratio', 'value')
 )
 def update_contact(shape,
                   lin_vel,
@@ -179,7 +184,10 @@ def update_contact(shape,
                   s0,
                   s1,
                   s2,
-                  contact_surface):
+                  contact_surface,
+                  format_value,
+                  direction,
+                  ratio):
 
     properties = {'grid_shape': (grid_shape, grid_shape),  # number of grid elements in x any
                   'grid_size': grid_size,  # the physical size of each grid element
@@ -198,7 +206,13 @@ def update_contact(shape,
 
     planar_lugre = FullFrictionModel(properties=properties)
     planar_lugre.update_p_x_y(shape_set[shape])
-    planar_lugre.step(vel_vec={'x': lin_vel, 'y': 0, 'tau': ang_vel})
+    cop = planar_lugre.cop
+    lin_vel_x = np.cos(direction)*lin_vel
+    lin_vel_y = np.sin(direction)*lin_vel
+    vel = vel_to_cop(-cop, vel_vec={'x': ratio*lin_vel_x, 'y': ratio*lin_vel_y, 'tau': (1-ratio)*ang_vel})
+
+
+    planar_lugre.step(vel_vec={'x': vel['x'], 'y': vel['y'], 'tau': vel['tau']})
     x_vec = planar_lugre.x_pos_vec
     y_vec = planar_lugre.y_pos_vec
     normal_f = planar_lugre.normal_force_grid
@@ -211,6 +225,11 @@ def update_contact(shape,
             x=x_vec,
             y=y_vec
         ))
+    fig.add_trace(go.Scatter(x=[cop[0]], y=[cop[1]]))
+
+
+
+    fig.add_trace(go.Scatter(x=[-vel['y']/vel['tau']], y=[vel['x']/vel['tau']]))
 
     fig.update_layout(yaxis=dict(scaleanchor="x", scaleratio=1))
 
@@ -235,18 +254,26 @@ def update_contact(shape,
                     'arrowhead':3,
                     'arrowsize':1,
                     'arrowwidth':1,
-                    'arrowcolor':'black'
+                    'arrowcolor':'white'
                 }
                 arrows += [arrow]
         fig.update_layout(annotations=arrows)
 
-    return fig
+
+    format_value = format_value if format_value is not None else 'png'
+
+    config = {'toImageButtonOptions': {'format': format_value}}
+
+    return [fig, config]
 
 
 @app.callback(
-    Output('ellipsoid', 'figure'),
+    [Output('ellipsoid', 'figure'),
+     Output('ellipsoid', 'config'),
+     Output('limit surface', 'figure')],
     Input('shape', 'value'),
     Input('linear_vel_value', 'value'),
+    Input('direction_value', 'value'),
     Input('angular_vel_value', 'value'),
     Input('grid_shape', 'value'),
     Input('grid_size', 'value'),
@@ -257,10 +284,12 @@ def update_contact(shape,
     Input('s0', 'value'),
     Input('s1', 'value'),
     Input('s2', 'value'),
-    Input('ratio', 'value')
+    Input('ratio', 'value'),
+    Input('format_dropdown', 'value')
 )
 def update_ellipse(shape,
                    lin_vel,
+                   direction,
                    ang_vel,
                    grid_shape,
                    grid_size,
@@ -271,7 +300,8 @@ def update_ellipse(shape,
                    s0,
                    s1,
                    s2,
-                   ratio):
+                   ratio,
+                   format_value):
 
     properties = {'grid_shape': (grid_shape, grid_shape),  # number of grid elements in x any
                   'grid_size': grid_size,  # the physical size of each grid element
@@ -288,45 +318,161 @@ def update_ellipse(shape,
                   'z_ba_ratio': 0.9,
                   'steady_state': True}
 
-    planar_lugre = FullFrictionModel(properties=properties)
-    planar_lugre.update_p_x_y(shape_set[shape])
-    gamma = 0.008
-    num = 200
-    ang_vel_list = np.linspace(ang_vel, 0, num)
-    lin_vel_list = np.linspace(0, lin_vel, num)
-    fig = go.Figure()
 
-    data = np.zeros((2, num))
-    for i in range(num):
-        f = planar_lugre.step(vel_vec={'x': lin_vel_list[i], 'y': 0, 'tau': ang_vel_list[i]})
-        data[0, i] = np.linalg.norm([f['x'], f['y']])
-        data[1, i] = abs(f['tau'])
+    planar_lugre = FullFrictionModel(properties=properties)
+    #planar_lugre_reduced = ReducedFrictionModel(properties=properties)
+
+    planar_lugre.update_p_x_y(shape_set[shape])
+    #planar_lugre_reduced.update_p_x_y(shape_set[shape])
+    #planar_lugre_reduced.update_pre_compute()
+    #planar_lugre_reduced.ls_active = True
+
+    gamma = 0.008
+    num = 20
+    direction_ = np.array([np.cos(direction), np.sin(direction)])
+    lin_vel_x = np.cos(direction)*lin_vel
+    lin_vel_y = np.sin(direction)*lin_vel
+
+    cop = planar_lugre.cop
+    v1 = vel_to_cop(-cop, vel_vec={'x': 0, 'y': 0, 'tau': ang_vel})
+    v2 = vel_to_cop(-cop, vel_vec={'x': lin_vel_x, 'y': lin_vel_y, 'tau': 0})
+    v3 = vel_to_cop(-cop, vel_vec={'x': 0, 'y': 0, 'tau': -ang_vel})
+    v4 = vel_to_cop(-cop, vel_vec={'x': -lin_vel_x, 'y': -lin_vel_y, 'tau': 0})
+
+    ang_vel_list = np.hstack([np.linspace(v1['tau'], v2['tau'], num),
+                              np.linspace(v2['tau'], v3['tau'], num),
+                              np.linspace(v3['tau'], v4['tau'], num),
+                              np.linspace(v4['tau'], v1['tau'], num)])
+
+    lin_vel_x_list = np.hstack([np.linspace(v1['x'], v2['x'], num),
+                                np.linspace(v2['x'], v3['x'], num),
+                                np.linspace(v3['x'], v4['x'], num),
+                                np.linspace(v4['x'], v1['x'], num)])
+    lin_vel_y_list = np.hstack([np.linspace(v1['y'], v2['y'], num),
+                                np.linspace(v2['y'], v3['y'], num),
+                                np.linspace(v3['y'], v4['y'], num),
+                                np.linspace(v4['y'], v1['y'], num)])
+
+    num_ = len(ang_vel_list)
+    fig = go.Figure()
+    data = np.zeros((4, num_))
+
+    rot_z = np.array([[np.cos(-direction), -np.sin(-direction)],
+                      [np.sin(-direction), np.cos(-direction)]])
+
+    for i in range(num_):
+        f_ = planar_lugre.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
+        f = planar_lugre.force_at_cop
+        data[0, i] = f['x']
+        data[1, i] = f['y']
+        data[2, i] = f['tau']
+        data[3, i] = rot_z.dot(np.array([f['x'], f['y']]).T)[0]
+
     max_save = np.max(data, axis=1)
     data = data.T / max_save
     data = data.T
-    fig.add_trace(go.Scatter(x=data[0, :], y=data[1, :], name=str('Limit surface square')))
 
-    x = np.linspace(0,1,100)
-    y = np.sqrt(1 - x**2)
-    fig.add_trace(go.Scatter(x=x, y=y, name='ellipse'))
+    for i in range(4):
+        if i % 2 == 0:
+            name_ = str('Limit surface full')
+            dash_ = None
+            color_ = 'midnightblue'
+        else:
+            name_ = str('Limit surface full mirror CoR')
+            dash_ = "dash"
+            color_ = "skyblue"
+        fig.add_trace(go.Scatter(x=data[3, i*num:(i+1)*num], y=data[2, i*num:(i+1)*num],
+                                 line=go.scatter.Line(color=color_, dash=dash_), name=name_))
 
+    #x = np.linspace(0,1,100)
+    #y = np.sqrt(1 - x**2)
+
+    """
+    data = np.zeros((2, num))
+    for i in range(num):
+        f = planar_lugre_reduced.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
+        data[0, i] = np.linalg.norm([f['x'], f['y']])
+        data[1, i] = abs(f['tau'])
+    max_save_red = np.max(data, axis=1)
+    data = data.T / max_save_red
+    data = data.T
+
+    fig.add_trace(go.Scatter(x=data[0, :], y=data[1, :], line=go.scatter.Line(color="green"), name='Limit surface reduced'))
+    """
     arrows = []
-    vx = ratio*lin_vel
+    vx = ratio*lin_vel_x
+    vy = ratio*lin_vel_y
+
     vt = (1-ratio)*ang_vel
-    f = planar_lugre.step(vel_vec={'x': vx, 'y': 0, 'tau': vt})
-    dx = np.linalg.norm([f['x'], f['y']]) / max_save[0]
-    dy = abs(f['tau']) / max_save[1]
+    v3 = vel_to_cop(-cop, vel_vec={'x': vx, 'y': vy, 'tau': vt})
 
-    arrows += [return_arrow(0, 0, dx, dy)]
+    f_ = planar_lugre.step(v3)
+    f = planar_lugre.force_at_cop
 
-    dx = vx / np.linalg.norm([vx, gamma*vt])
-    dy = gamma*vt / np.linalg.norm([vx, gamma*vt])
+    dx = rot_z.dot(np.array([f['x'], f['y']]).T)[0]/ max_save[3]
+    dy = f['tau'] / max_save[2]
 
-    arrows += [return_arrow(0, 0, dx, dy)]
+    arrows += [return_arrow(0, 0, dx, dy, 'blue')]
+    #f = planar_lugre_reduced.step(vel_vec={'x': vx, 'y': vy, 'tau': vt})
+    #dx = np.linalg.norm([f['x'], f['y']]) / max_save_red[0]
+    #dy = abs(f['tau']) / max_save_red[1]
+
+    #arrows += [return_arrow(0, 0, dx, dy, 'green')]
     fig.update_layout(annotations=arrows)
+    fig.update_layout(title='Ellipse',
+                      width=600, height=500,
+                      xaxis_title='Force',
+                      yaxis_title='Torque',
+                      yaxis=dict(scaleanchor="x", scaleratio=1)
+                      )
 
+    format_value = format_value if format_value is not None else 'png'
 
-    return fig
+    config = {'toImageButtonOptions': {'format': format_value}}
+
+    data3d = np.zeros((3, num_*(2*num)))
+    directione3 = np.linspace(0, 2*np.pi, num_)
+    for j in range(num_):
+        direction = directione3[j]
+        lin_vel_x = np.cos(direction) * lin_vel
+        lin_vel_y = np.sin(direction) * lin_vel
+
+        cop = planar_lugre.cop
+        v1 = vel_to_cop(-cop, vel_vec={'x': 0, 'y': 0, 'tau': ang_vel})
+        v2 = vel_to_cop(-cop, vel_vec={'x': lin_vel_x, 'y': lin_vel_y, 'tau': 0})
+
+        ang_vel_list = np.linspace(v1['tau'], v2['tau'], num)
+        lin_vel_x_list = np.linspace(v1['x'], v2['x'], num)
+        lin_vel_y_list = np.linspace(v1['y'], v2['y'], num)
+
+        for i in range(num):
+            f_ = planar_lugre.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
+            f = planar_lugre.force_at_cop
+            data3d[0, i+j*num] = f['x']
+            data3d[1, i+j*num] = f['y']
+            data3d[2, i+j*num] = f['tau']
+            data3d[0, i + j * num + num_*num] = -f['x']
+            data3d[1, i + j * num +num_*num] = -f['y']
+            data3d[2, i + j * num  +num_*num] = -f['tau']
+    max_save3d = np.max(data3d, axis=1)
+    data3d = data3d.T / max_save3d
+    data3d = data3d.T
+    fig_2 = go.Figure()
+    fig_2.add_trace(go.Scatter3d(x=data3d[0,:], y=data3d[1,:], z=data3d[2,:],
+                                 mode='markers',
+                                 marker=dict(
+                                     size=8,
+                                     color=data3d[2,:],  # set color to an array/list of desired values
+                                     colorscale='Viridis',  # choose a colorscale
+                                     opacity=1
+                                 )
+                                 ))
+
+    fig_2.update_layout(title='Limit surface',
+                      width=1000, height=1000,
+                      )
+    return [fig, config, fig_2]
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)

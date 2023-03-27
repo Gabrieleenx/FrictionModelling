@@ -13,9 +13,9 @@ def compute_vertical_lines(y_min, y_max, x_data):
 
 def add_lines(x_vec, y_vec, grid_size, fig):
     x_vec_ = (x_vec - grid_size/2)
-    x_vec_ = np.append(x_vec_, np.max(x_vec)+grid_size)
+    x_vec_ = np.append(x_vec_, np.max(x_vec)+grid_size/2)
     y_vec_ = (y_vec - grid_size/2)
-    y_vec_ = np.append(y_vec_, np.max(y_vec)+grid_size)
+    y_vec_ = np.append(y_vec_, np.max(y_vec)+grid_size/2)
 
     hx, hy = compute_horizontal_lines(np.min(x_vec_), np.max(x_vec_), y_vec_)
     fig.add_trace(go.Scatter(
@@ -51,7 +51,7 @@ def calc_surface(model, lin_vel_range, ang_vel_range, res):
 
     return f_surf.T, t_surf.T, [x, y]
 
-def return_arrow(sx, sy, dx, dy):
+def return_arrow(sx, sy, dx, dy, color='black'):
     arrow = {'x': sx + dx,  # arrows' head
              'y': sy + dy,  # arrows' head
              'ax': 0,  # arrows' tail
@@ -65,6 +65,6 @@ def return_arrow(sx, sy, dx, dy):
              'arrowhead': 3,
              'arrowsize': 1,
              'arrowwidth': 1,
-             'arrowcolor': 'black'
+             'arrowcolor': color
              }
     return arrow
