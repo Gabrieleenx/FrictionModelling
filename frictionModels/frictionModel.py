@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from typing import Dict
-from frictionModels.utils import elasto_plastic_alpha, CustomHashList, update_radius, update_viscus_scale, vel_to_cop
+from frictionModels.utils import elasto_plastic_alpha, CustomHashList3D, update_radius, update_viscus_scale, vel_to_cop
 
 """
 properties = {'grid_shape': (21, 21),  # number of grid elements in x any
@@ -195,10 +195,10 @@ class FullFrictionModel(FrictionBase):
 
 
 class ReducedFrictionModel(FrictionBase):
-    def __init__(self, properties: Dict[str, any], nr_ls_segments: int = 100, ls_active: bool = True):
+    def __init__(self, properties: Dict[str, any], nr_ls_segments: int = 20, ls_active: bool = True):
         super().__init__(properties)
         self.gamma = 0.00764477848712988
-        self.limit_surface = CustomHashList(nr_ls_segments)
+        self.limit_surface = CustomHashList3D(nr_ls_segments)
         self.viscous_scale = np.ones(3)
         self.p_x_y = None
         self.full_model = self.initialize_full_model()
@@ -222,25 +222,6 @@ class ReducedFrictionModel(FrictionBase):
 
         return force
 
-    def step_steady_state(self, vel_vec: Dict[str, float], force_vec: Dict[str, float]) -> [Dict[str, float], float]:
-        """
-        This function calculates the steady state friction and return the friction that is within the limit surface
-        together with the distance to the limit surface. The ratio is between [0, 1], at 0 you are in the origin and at
-        1 you are on the limit surface. To get the force on the limit surface one can use the input force_vec/ratio,
-        this is only true for when ||vel_vec|| = 0.
-        :param vel_vec:
-        :param force_vec:
-        :return: [force_vec, ratio]
-        """
-        vel_cop = vel_to_cop(self.cop, vel_vec)
-
-        force_at_cop = self.move_force_to_cop(force_vec)
-
-        force_at_cop, ratio_to_slip = self.steady_state(vel_cop, force_at_cop)
-
-        force = self.move_force_to_center(force_at_cop)
-
-        return [force, ratio_to_slip]
 
     def initialize_full_model(self):
         properties = copy.deepcopy(self.p)
@@ -262,7 +243,8 @@ class ReducedFrictionModel(FrictionBase):
     def update_pre_compute(self):
         # limit surface
         self.full_model.update_p_x_y(self.p_x_y)
-        self.limit_surface.initialize(self.full_model, self.cop)
+        #self.limit_surface.initialize(self.full_model, self.cop)
+        self.limit_surface.initialize(self.full_model)
         # gamma radius
         self.gamma = update_radius(self.full_model)
         # viscus scale
@@ -309,6 +291,7 @@ class ReducedFrictionModel(FrictionBase):
 
         self.lugre['z'] += dz * self.p['dt']
 
+    """
     def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
         ls_surf = self.limit_surface.get_interpolation(np.linalg.norm([vel_cop['x'], vel_cop['y']]),
                                                        abs(vel_cop['tau']))
@@ -325,6 +308,17 @@ class ReducedFrictionModel(FrictionBase):
             beta_t = 1
 
         return np.array([beta_t, beta_t, beta_tau])
+    """
+
+    def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
+        ls = self.limit_surface.get_bilinear_interpolation(vel_cop, self.gamma)
+        beta = np.zeros(3)
+        for i in range(3):
+            if vel_cop_tau[i] != 0:
+                beta[i] = abs(ls[i]) * v_norm / abs(vel_cop_tau[i])
+            else:
+                beta[i] = 1
+        return beta
 
 
     def steady_state(self, vel_cop, force_at_cop):

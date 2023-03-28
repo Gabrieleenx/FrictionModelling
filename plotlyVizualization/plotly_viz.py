@@ -320,16 +320,15 @@ def update_ellipse(shape,
 
 
     planar_lugre = FullFrictionModel(properties=properties)
-    #planar_lugre_reduced = ReducedFrictionModel(properties=properties)
+    planar_lugre_reduced = ReducedFrictionModel(properties=properties, nr_ls_segments=20)
 
     planar_lugre.update_p_x_y(shape_set[shape])
-    #planar_lugre_reduced.update_p_x_y(shape_set[shape])
-    #planar_lugre_reduced.update_pre_compute()
-    #planar_lugre_reduced.ls_active = True
+    planar_lugre_reduced.update_p_x_y(shape_set[shape])
+    planar_lugre_reduced.update_pre_compute()
+    planar_lugre_reduced.ls_active = True
 
     gamma = 0.008
     num = 20
-    direction_ = np.array([np.cos(direction), np.sin(direction)])
     lin_vel_x = np.cos(direction)*lin_vel
     lin_vel_y = np.sin(direction)*lin_vel
 
@@ -387,18 +386,34 @@ def update_ellipse(shape,
     #x = np.linspace(0,1,100)
     #y = np.sqrt(1 - x**2)
 
-    """
-    data = np.zeros((2, num))
-    for i in range(num):
-        f = planar_lugre_reduced.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
-        data[0, i] = np.linalg.norm([f['x'], f['y']])
-        data[1, i] = abs(f['tau'])
-    max_save_red = np.max(data, axis=1)
-    data = data.T / max_save_red
-    data = data.T
+    data_red = np.zeros((4, num_))
 
-    fig.add_trace(go.Scatter(x=data[0, :], y=data[1, :], line=go.scatter.Line(color="green"), name='Limit surface reduced'))
-    """
+    for i in range(num_):
+
+        f = planar_lugre_reduced.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
+        data_red[0, i] = f['x']
+        data_red[1, i] = f['y']
+        data_red[2, i] = f['tau']
+        data_red[3, i] = rot_z.dot(np.array([f['x'], f['y']]).T)[0]
+
+
+    max_save_red = np.max(data_red, axis=1)
+    data_red = data_red.T / max_save_red
+    data_red = data_red.T
+
+    for i in range(4):
+        if i % 2 == 0:
+            name_ = str('Limit surface red')
+            dash_ = None
+            color_ = 'firebrick'
+        else:
+            name_ = str('Limit surface red mirror CoR')
+            dash_ = "dash"
+            color_ = "indianred"
+        fig.add_trace(go.Scatter(x=data_red[3, i*num:(i+1)*num], y=data_red[2, i*num:(i+1)*num],
+                                 line=go.scatter.Line(color=color_, dash=dash_), name=name_))
+
+
     arrows = []
     vx = ratio*lin_vel_x
     vy = ratio*lin_vel_y
@@ -413,11 +428,12 @@ def update_ellipse(shape,
     dy = f['tau'] / max_save[2]
 
     arrows += [return_arrow(0, 0, dx, dy, 'blue')]
-    #f = planar_lugre_reduced.step(vel_vec={'x': vx, 'y': vy, 'tau': vt})
-    #dx = np.linalg.norm([f['x'], f['y']]) / max_save_red[0]
-    #dy = abs(f['tau']) / max_save_red[1]
+    f = planar_lugre_reduced.step(v3)
+    dx = rot_z.dot(np.array([f['x'], f['y']]).T)[0] / max_save_red[3]
+    dy = f['tau'] / max_save_red[2]
 
-    #arrows += [return_arrow(0, 0, dx, dy, 'green')]
+    arrows += [return_arrow(0, 0, dx, dy, 'green')]
+
     fig.update_layout(annotations=arrows)
     fig.update_layout(title='Ellipse',
                       width=600, height=500,
@@ -446,8 +462,8 @@ def update_ellipse(shape,
         lin_vel_y_list = np.linspace(v1['y'], v2['y'], num)
 
         for i in range(num):
-            f_ = planar_lugre.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
-            f = planar_lugre.force_at_cop
+            f = planar_lugre_reduced.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
+            #f = planar_lugre.force_at_cop
             data3d[0, i+j*num] = f['x']
             data3d[1, i+j*num] = f['y']
             data3d[2, i+j*num] = f['tau']
