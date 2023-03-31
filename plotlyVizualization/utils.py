@@ -36,7 +36,7 @@ def add_lines(x_vec, y_vec, grid_size, fig):
     ))
 
 
-def calc_surface(model, lin_vel_range, ang_vel_range, res):
+def calc_surface(model, lin_vel_range, ang_vel_range, res, direction):
     x = np.linspace(lin_vel_range[0], lin_vel_range[1], res)
     y = np.linspace(ang_vel_range[0], ang_vel_range[1], res)
 
@@ -45,7 +45,10 @@ def calc_surface(model, lin_vel_range, ang_vel_range, res):
 
     for x_, v in enumerate(x):
         for y_, w in enumerate(y):
-            f = model.step(vel_vec={'x': v, 'y': 0, 'tau': w})
+            vx = np.cos(direction) * v
+            vy = np.sin(direction) * v
+            f = model.step(vel_vec={'x': vx, 'y': vy, 'tau': w})
+            f = model.force_at_cop
             f_surf[x_, y_] = np.linalg.norm([f['x'], f['y']])
             t_surf[x_, y_] = abs(f['tau'])
 

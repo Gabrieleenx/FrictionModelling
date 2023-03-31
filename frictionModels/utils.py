@@ -1,55 +1,6 @@
 import numpy as np
 
 
-class CustomHashList(object):
-    def __init__(self, num_segments):
-        self.num_segments = num_segments
-        self.scl = 2*self.num_segments/np.pi
-        self.list = [0]*self.num_segments
-        self.vel_scale = 0.01
-        self.f_max = 0
-        self.tau_max = 0
-
-    def get_closest_samples(self, vel, omega):
-        a = np.arctan2(abs(vel/self.vel_scale), abs(omega)) * self.scl
-        idx = int(a)
-        if idx == self.num_segments:
-            return self.list[idx-1][1], self.list[idx-1][1], 1
-        return self.list[idx][0], self.list[idx][1], a
-
-    def get_interpolation(self, vel, omega):
-        v1, v2, a = self.get_closest_samples(vel, omega)
-        r = a - int(a)
-        return r * v2 + (1 - r) * v1
-
-    def get_ratio_pairs(self, idx):
-        r1 = np.tan(idx/self.scl)
-        r2 = np.tan((idx+1)/self.scl)
-        return r1, r2
-
-    def add_to_list(self, idx, v1, v2):
-        self.list[idx] = [v1, v2]
-
-    def initialize(self, friction_model, cop):
-        f1 = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': 1, 'y': 0, 'tau': 0}))
-        f2 = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': 0, 'y': 0, 'tau': 1}))
-        self.f_max = np.linalg.norm([f1['x'], f1['y']])
-        self.tau_max = abs(f2['tau'])
-
-        for i in range(self.num_segments):
-            r1, r2 = self.get_ratio_pairs(i)
-            w1 = np.sqrt(1/(1 + r1**2))
-            v1 = self.vel_scale * np.sqrt(1 - w1**2)
-            f = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': v1, 'y': 0, 'tau': w1}))
-            f1 = np.array([np.linalg.norm([f['x'], f['y']])/self.f_max, abs(f['tau'])/self.tau_max])
-
-            w2 = np.sqrt(1 / (1 + r2 ** 2))
-            v2 = self.vel_scale * np.sqrt(1 - w2 ** 2)
-            f = friction_model.step(vel_vec=vel_to_cop(-cop, {'x': v2, 'y': 0, 'tau': w2}))
-            f2 = np.array([np.linalg.norm([f['x'], f['y']]) / self.f_max, abs(f['tau']) / self.tau_max])
-            self.add_to_list(i, f1, f2)
-
-
 class CustomHashList3D(object):
     def __init__(self, num_segments):
         """
@@ -60,16 +11,24 @@ class CustomHashList3D(object):
         self.cop = np.zeros(2)
         self.gamma = 1
         self.omega_max = 1
+
     def get_closest_samples(self, vel, gamma):
         n = self.num_segments
         a1_ = np.arctan2(vel['y'], vel['x'])
+
+        if  vel['tau'] < 0:
+            if a1_ < np.pi:
+                a1_ += np.pi
+            else:
+                a1_ += -np.pi
+
         if a1_ < 0:
             a1_ = 2*np.pi + a1_
         a1 = a1_ * 2*n/np.pi
 
 
         v_xy_norm = np.linalg.norm([vel['y'], vel['x']])
-        v_xy_norm = v_xy_norm/self.gamma  #  Compensate for change in gamma and the velocity relation
+        v_xy_norm = gamma*v_xy_norm/(self.gamma**2)  #  Compensate for change in gamma and the velocity relation
         # for pre-computation
         a2 = np.arctan2(v_xy_norm, abs(vel['tau'])) * 2 * n/np.pi
 
@@ -83,6 +42,7 @@ class CustomHashList3D(object):
         if r1 >= 4*n:
             r1 = 4*n - 1
             dr = 1
+
         idx = self.calc_idx(r1, i1)
         f = self.list[idx]
 
@@ -108,19 +68,56 @@ class CustomHashList3D(object):
         ls_x = s1*f1['x'] + s2*f2['x'] + s3*f3['x'] + s4*f4['x']
         ls_y = s1 * f1['y'] + s2 * f2['y'] + s3 * f3['y'] + s4 * f4['y']
         ls_tau = s1 * f1['tau'] + s2 * f2['tau'] + s3 * f3['tau'] + s4 * f4['tau']
+
         return np.array([ls_x, ls_y, ls_tau])
 
-    def calc_new_vel(self, vel_cop):
-        # TODO
-        return vel_cop
 
-    def get_limit_surface(self, vel, gamma):
-        vel_cop = vel_to_cop(self.cop, vel)
-        # TODO compensate for gamma
-        f = self.get_bilinear_interpolation(vel_cop)
-        vel_hat_cop = self.calc_new_vel(vel_cop)
-        vel_hat = vel_to_cop(-self.cop, vel_hat_cop)
-        return f, vel_hat
+    def calc_new_vel(self, vel_cop, gamma):
+        ls_0 = self.get_bilinear_interpolation(vel={'x': 0, 'y': 0, 'tau': 1}, gamma=gamma)
+        ax = np.arctan2(ls_0[2], ls_0[0]) + np.pi/2
+        ay = np.arctan2(ls_0[2], ls_0[1]) + np.pi/2
+
+        iter_ = 5
+        rx = ax
+        ry = ay
+
+
+        for i in range(iter_):
+            vx = gamma * np.sin(rx)
+            vy = gamma * np.sin(ry)
+
+            ls_ = self.get_bilinear_interpolation(vel={'x': vx, 'y': vy, 'tau': 1}, gamma=gamma)
+            bx = np.arctan2(ls_[2], ls_[0]) + np.pi / 2 + ax
+            by = np.arctan2(ls_[2], ls_[1]) + np.pi / 2 + ay
+
+            if ax != 0:
+                rx = rx*bx/ax
+            if ay != 0:
+                ry = ry*by/ay
+
+        vx = gamma * np.sin(rx)
+        vy = gamma * np.sin(ry)
+
+        p_x = -vy
+        p_y = vx
+
+        pos = np.array([p_x, p_y])*gamma/self.gamma
+        new_vel = vel_to_cop(pos, vel_cop)
+
+        p_xy_n = np.linalg.norm([p_x, p_y])
+        r = 0
+        if p_xy_n != 0:
+            p_x_n = abs(p_x)/p_xy_n
+            p_y_n = abs(p_y)/p_xy_n
+            nn = np.linalg.norm([vel_cop['x']*p_x_n, vel_cop['y']*p_y_n])/self.gamma
+            r = (2*np.arctan2(abs(vel_cop['tau']), nn))/(np.pi)
+
+        new_vel_x = r*new_vel['x'] + (1-r)*vel_cop['x']
+        new_vel_y = r * new_vel['y'] + (1 - r) * vel_cop['y']
+        new_vel_tau = r * new_vel['tau'] + (1 - r) * vel_cop['tau']
+
+        return {'x':new_vel_x, 'y':new_vel_y, 'tau':new_vel_tau}
+
 
     def get_if_calc(self, r, i, j):
         state = False
@@ -130,14 +127,14 @@ class CustomHashList3D(object):
                 idx = self.calc_idx(r, i-1)
                 value = self.list[idx][2]
                 return True, value
-            if r > 0:
+            elif r > 0:
                 idx = self.calc_idx(r - 1, i)
                 value = self.list[idx][1]
                 return True, value
         elif j == 1:
             if i > 0:
                 idx = self.calc_idx(r, i-1)
-                value = self.list[idx][0]
+                value = self.list[idx][3]
                 return True, value
         elif j == 2:
             if r > 0:
@@ -149,7 +146,6 @@ class CustomHashList3D(object):
 
 
     def calc_vel(self, r, i, j):
-        v_max = self.gamma*self.omega_max
         if j == 0 or j == 1:
             r1 = np.tan(i * np.pi/ (2*self.num_segments))
 
@@ -182,24 +178,30 @@ class CustomHashList3D(object):
         idx = self.calc_idx(r, i)
         for j in range(4):
             state, value = self.get_if_calc(r, i, j)
-            state = False # TODO fix 
             if state:
                 f[j] = value
             else:
+
                 vx, vy, vtau = self.calc_vel(r, i, j)
-                f[j] = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': vx, 'y': vy, 'tau': vtau}))
-                f[j] = normalize_force(f[j], f_t_max, f_tau_max)
+
+                f_ = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': vx, 'y': vy, 'tau': vtau}))
+                f_ = friction_model.force_at_cop
+                f[j] = normalize_force(f_, f_t_max, f_tau_max)
+
 
         return f[0], f[1], f[2], f[3], idx
 
     def add_to_list(self, idx, f1, f2, f3, f4):
         self.list[idx] = [f1, f2, f3, f4]
     def initialize(self, friction_model):
-        f1 = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 1, 'y': 0, 'tau': 0}))
-        f2 = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 0, 'y': 0, 'tau': 1}))
+        self.cop = friction_model.cop
+        _ = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 1, 'y': 0, 'tau': 0}))
+        f1 = friction_model.force_at_cop
+        _ = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 0, 'y': 0, 'tau': 1}))
+        f2 = friction_model.force_at_cop
+
         f_t_max = abs(f1['x'])
         f_tau_max = abs(f2['tau'])
-        self.cop = friction_model.cop
         self.gamma = update_radius(friction_model)
         for r in range(4*self.num_segments):
             # index for rotation/direction
@@ -252,7 +254,7 @@ def update_radius(full_model):
     vel_vec = vel_to_cop(-cop, vel_vec_)
 
     f = full_model.step(vel_vec)
-
+    f = full_model.force_at_cop
     if fn != 0:
         gamma = abs(f['tau'])/(mu*fn)
     else:

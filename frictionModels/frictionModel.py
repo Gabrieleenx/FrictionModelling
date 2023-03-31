@@ -114,7 +114,7 @@ class FullFrictionModel(FrictionBase):
         self.velocity_grid = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))
         self.lugre = self.initialize_lugre()
 
-    def step(self, vel_vec: Dict[str, float]) -> Dict[str, float]:
+    def step_single_point(self, vel_vec: Dict[str, float]) -> Dict[str, float]:
         """
         This function does one time step of the friction model
         :param vel_vec:
@@ -129,6 +129,70 @@ class FullFrictionModel(FrictionBase):
 
         return force_at_center
 
+    def step(self, vel_vec: Dict[str, float]) -> Dict[str, float]:
+        if not self.p['steady_state']:
+            return self.step_single_point(vel_vec)
+        else:
+            vx = vel_vec['x']
+            vy = vel_vec['y']
+            vtau = vel_vec['tau']
+            if vtau == 0:
+                self.update_velocity_grid(vel_vec)
+                self.update_lugre()
+                force_at_center = self.approximate_integral()
+            else:
+
+                nx = self.p['grid_shape'][0]
+                ny = self.p['grid_shape'][1]
+                x0 = nx * self.p['grid_size']/2
+                y0 = ny * self.p['grid_size']/2
+
+                cor = np.array([-vy/vtau, vx/vtau])
+
+
+                ix_ = nx*(cor[0] + x0)/(2*abs(x0))
+                ix = int(ix_)
+                dx = ix_ - ix
+
+                iy_ = ny*(cor[1] + y0)/(2*abs(y0))
+                iy = int(iy_)
+                dy = iy_ - iy
+
+
+                if ix >= 0 and ix < nx and iy >= 0 and iy < ny:
+                    ox = [0, 1, 0, 1]
+                    oy = [0, 0, 1, 1]
+
+                    f = [0,0,0,0]
+
+                    for i in range(4):
+                        corx = ((ix + ox[i])/nx) * (2*abs(x0)) - x0
+                        cory = ((iy + oy[i]) / ny) * (2 * abs(y0)) - y0
+                        cor_ = np.array([corx, cory])
+                        vel_new = vel_to_cop(-cor_, {'x':0, 'y':0, 'tau':vtau})
+
+                        self.update_velocity_grid(vel_new)
+                        self.update_lugre()
+                        f[i] = self.approximate_integral()
+
+                    s1 = (1 - dx) * (1 - dy)
+                    s2 = dx * (1 - dy)
+                    s3 = dy * (1 - dx)
+                    s4 = dx * dy
+                    fx = s1*f[0]['x'] + s2*f[1]['x'] + s3*f[2]['x'] + s4*f[3]['x']
+                    fy = s1*f[0]['y'] + s2*f[1]['y'] + s3*f[2]['y'] + s4*f[3]['y']
+                    ftau = s1*f[0]['tau'] + s2*f[1]['tau'] + s3*f[2]['tau'] + s4*f[3]['tau']
+
+                    force_at_center = {'x':fx, 'y':fy, 'tau':ftau}
+
+                else:
+                    self.update_velocity_grid(vel_vec)
+                    self.update_lugre()
+                    force_at_center = self.approximate_integral()
+
+            self.force_at_cop = self.move_force_to_cop(force_at_center)
+
+            return force_at_center
     def update_p_x_y(self, p_x_y):
         self.update_cop_and_force_grid(p_x_y)
 
@@ -216,9 +280,9 @@ class ReducedFrictionModel(FrictionBase):
 
         self.update_lugre(vel_cop)
 
-        force_at_cop = {'x': self.lugre['f'][0], 'y': self.lugre['f'][1], 'tau': self.lugre['f'][2]}
+        self.force_at_cop = {'x': self.lugre['f'][0], 'y': self.lugre['f'][1], 'tau': self.lugre['f'][2]}
 
-        force = self.move_force_to_center(force_at_cop)
+        force = self.move_force_to_center(self.force_at_cop)
 
         return force
 
@@ -243,7 +307,6 @@ class ReducedFrictionModel(FrictionBase):
     def update_pre_compute(self):
         # limit surface
         self.full_model.update_p_x_y(self.p_x_y)
-        #self.limit_surface.initialize(self.full_model, self.cop)
         self.limit_surface.initialize(self.full_model)
         # gamma radius
         self.gamma = update_radius(self.full_model)
@@ -256,12 +319,13 @@ class ReducedFrictionModel(FrictionBase):
 
         g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * np.exp(- (v_norm / self.p['v_s']) ** self.p['alpha'])
         if self.ls_active:
-            beta = self.calc_beta(vel_cop, vel_cop_tau, v_norm)
+            beta, vel_cop_tau, v_norm = self.calc_beta(vel_cop, vel_cop_tau, v_norm)
         else:
             beta = np.ones(3)
 
         if v_norm != 0:
             z_ss = (beta*vel_cop_tau*g) / (self.p['s0'] * v_norm)
+
         else:
             z_ss = np.zeros(3)
 
@@ -291,34 +355,20 @@ class ReducedFrictionModel(FrictionBase):
 
         self.lugre['z'] += dz * self.p['dt']
 
-    """
-    def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
-        ls_surf = self.limit_surface.get_interpolation(np.linalg.norm([vel_cop['x'], vel_cop['y']]),
-                                                       abs(vel_cop['tau']))
-        v_norm_t = np.linalg.norm(vel_cop_tau[0:2])
-
-        if vel_cop_tau[2] != 0:
-            beta_tau = ls_surf[1] * v_norm / abs(vel_cop_tau[2])
-        else:
-            beta_tau = 1
-
-        if v_norm_t != 0:
-            beta_t = ls_surf[0]*v_norm / v_norm_t
-        else:
-            beta_t = 1
-
-        return np.array([beta_t, beta_t, beta_tau])
-    """
-
     def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
         ls = self.limit_surface.get_bilinear_interpolation(vel_cop, self.gamma)
+        ls_ = ls * np.array([0.21, 0.21, 0.0008372589830271525])
+        new_vel = self.limit_surface.calc_new_vel(vel_cop, self.gamma)
+        new_vel_ = np.array([new_vel['x'], new_vel['y'], self.gamma*new_vel['tau']])
+        v_norm_new = np.linalg.norm(new_vel_)
         beta = np.zeros(3)
         for i in range(3):
-            if vel_cop_tau[i] != 0:
-                beta[i] = abs(ls[i]) * v_norm / abs(vel_cop_tau[i])
+            if new_vel_[i] != 0:
+                beta[i] = abs(ls[i]) * v_norm_new/ abs(new_vel_[i])
             else:
                 beta[i] = 1
-        return beta
+
+        return beta, new_vel_, v_norm_new
 
 
     def steady_state(self, vel_cop, force_at_cop):

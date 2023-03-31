@@ -75,8 +75,8 @@ def get_layout():
                 dcc.Slider(0, 2*np.pi, id='direction_value', value=0.0),
                 html.Label('Angular vel'),
                 dcc.Slider(0, 5, id='angular_vel_value', value=3),
-                html.Label('Ratio'),
-                dcc.Slider(0, 1, id='ratio', value=0.5),
+                html.Label('Angle between linear vel and angular vel'),
+                dcc.Slider(0, 2*np.pi, id='ratio', value=0.5),
             ], style={'display': 'inline-block', 'width': '49%'})
         ], style={
             'padding': '10px 5px'

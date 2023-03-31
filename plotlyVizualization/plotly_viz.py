@@ -2,7 +2,7 @@ import numpy as np
 from dash import Dash, html, dcc, Input, Output
 import plotly.graph_objects as go
 from utils import *
-from frictionModels.utils import vel_to_cop
+from frictionModels.utils import vel_to_cop, CustomHashList3D
 from layout import get_layout
 from surfaces.surfaces import p_square, p_line, p_circle, p_line_grad
 from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
@@ -30,6 +30,7 @@ app.layout = get_layout()
     Input('s1', 'value'),
     Input('s2', 'value'),
     Input('resolution', 'value'),
+    Input('direction_value', 'value'),
 )
 def update_surface_data(model,
                         shape,
@@ -44,7 +45,8 @@ def update_surface_data(model,
                         s0,
                         s1,
                         s2,
-                        res):
+                        res,
+                        direction):
 
     properties = {'grid_shape': (grid_shape, grid_shape),  # number of grid elements in x any
                   'grid_size': grid_size,  # the physical size of each grid element
@@ -66,7 +68,7 @@ def update_surface_data(model,
     if 'Full' in model:
         planar_lugre = FullFrictionModel(properties=properties)
         planar_lugre.update_p_x_y(shape_set[shape])
-        f_surf, t_surf, x_y = calc_surface(planar_lugre, lin_vel_range, ang_vel_range, res)
+        f_surf, t_surf, x_y = calc_surface(planar_lugre, lin_vel_range, ang_vel_range, res, direction)
         data_local = dict()
         data_local['f'] = f_surf
         data_local['tau'] = t_surf
@@ -78,7 +80,7 @@ def update_surface_data(model,
         planar_lugre_reduced = ReducedFrictionModel(properties=properties)
         planar_lugre_reduced.update_p_x_y(shape_set[shape])
         planar_lugre_reduced.update_pre_compute()
-        f_surf, t_surf, x_y = calc_surface(planar_lugre_reduced, lin_vel_range, ang_vel_range, res)
+        f_surf, t_surf, x_y = calc_surface(planar_lugre_reduced, lin_vel_range, ang_vel_range, res, direction)
         data_local = dict()
         data_local['f'] = f_surf
         data_local['tau'] = t_surf
@@ -90,7 +92,7 @@ def update_surface_data(model,
         planar_lugre_reduced_ellipse = ReducedFrictionModel(properties=properties, ls_active=False)
         planar_lugre_reduced_ellipse.update_p_x_y(shape_set[shape])
         planar_lugre_reduced_ellipse.update_pre_compute()
-        f_surf, t_surf, x_y = calc_surface(planar_lugre_reduced_ellipse, lin_vel_range, ang_vel_range, res)
+        f_surf, t_surf, x_y = calc_surface(planar_lugre_reduced_ellipse, lin_vel_range, ang_vel_range, res, direction)
         data_local = dict()
         data_local['f'] = f_surf
         data_local['tau'] = t_surf
@@ -209,7 +211,14 @@ def update_contact(shape,
     cop = planar_lugre.cop
     lin_vel_x = np.cos(direction)*lin_vel
     lin_vel_y = np.sin(direction)*lin_vel
-    vel = vel_to_cop(-cop, vel_vec={'x': ratio*lin_vel_x, 'y': ratio*lin_vel_y, 'tau': (1-ratio)*ang_vel})
+
+
+    vx = np.cos(ratio)*lin_vel_x
+    vy = np.cos(ratio)*lin_vel_y
+
+    vt =np.sin(ratio)*ang_vel
+
+    vel = vel_to_cop(-cop, vel_vec={'x': vx, 'y': vy, 'tau': vt})
 
 
     planar_lugre.step(vel_vec={'x': vel['x'], 'y': vel['y'], 'tau': vel['tau']})
@@ -327,40 +336,27 @@ def update_ellipse(shape,
     planar_lugre_reduced.update_pre_compute()
     planar_lugre_reduced.ls_active = True
 
-    gamma = 0.008
     num = 20
+
     lin_vel_x = np.cos(direction)*lin_vel
     lin_vel_y = np.sin(direction)*lin_vel
 
     cop = planar_lugre.cop
-    v1 = vel_to_cop(-cop, vel_vec={'x': 0, 'y': 0, 'tau': ang_vel})
-    v2 = vel_to_cop(-cop, vel_vec={'x': lin_vel_x, 'y': lin_vel_y, 'tau': 0})
-    v3 = vel_to_cop(-cop, vel_vec={'x': 0, 'y': 0, 'tau': -ang_vel})
-    v4 = vel_to_cop(-cop, vel_vec={'x': -lin_vel_x, 'y': -lin_vel_y, 'tau': 0})
 
-    ang_vel_list = np.hstack([np.linspace(v1['tau'], v2['tau'], num),
-                              np.linspace(v2['tau'], v3['tau'], num),
-                              np.linspace(v3['tau'], v4['tau'], num),
-                              np.linspace(v4['tau'], v1['tau'], num)])
-
-    lin_vel_x_list = np.hstack([np.linspace(v1['x'], v2['x'], num),
-                                np.linspace(v2['x'], v3['x'], num),
-                                np.linspace(v3['x'], v4['x'], num),
-                                np.linspace(v4['x'], v1['x'], num)])
-    lin_vel_y_list = np.hstack([np.linspace(v1['y'], v2['y'], num),
-                                np.linspace(v2['y'], v3['y'], num),
-                                np.linspace(v3['y'], v4['y'], num),
-                                np.linspace(v4['y'], v1['y'], num)])
-
-    num_ = len(ang_vel_list)
     fig = go.Figure()
-    data = np.zeros((4, num_))
+    data = np.zeros((4, 4*num))
 
     rot_z = np.array([[np.cos(-direction), -np.sin(-direction)],
                       [np.sin(-direction), np.cos(-direction)]])
-
-    for i in range(num_):
-        f_ = planar_lugre.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
+    ratio_ = np.hstack([np.linspace(0, np.pi/2, num),
+                        np.linspace(np.pi/2, np.pi, num),
+                        np.linspace(np.pi, 3*np.pi/2, num),
+                        np.linspace(3*np.pi/2, 2*np.pi, num)])
+    for i in range(4*num):
+        vx = np.cos(ratio_[i]) * lin_vel_x
+        vy = np.cos(ratio_[i]) * lin_vel_y
+        vt = np.sin(ratio_[i]) * ang_vel
+        f = planar_lugre.step(vel_vec=vel_to_cop(-cop, vel_vec={'x': vx, 'y': vy, 'tau': vt}))
         f = planar_lugre.force_at_cop
         data[0, i] = f['x']
         data[1, i] = f['y']
@@ -368,6 +364,7 @@ def update_ellipse(shape,
         data[3, i] = rot_z.dot(np.array([f['x'], f['y']]).T)[0]
 
     max_save = np.max(data, axis=1)
+    max_save[max_save==0] = 1
     data = data.T / max_save
     data = data.T
 
@@ -383,22 +380,22 @@ def update_ellipse(shape,
         fig.add_trace(go.Scatter(x=data[3, i*num:(i+1)*num], y=data[2, i*num:(i+1)*num],
                                  line=go.scatter.Line(color=color_, dash=dash_), name=name_))
 
-    #x = np.linspace(0,1,100)
-    #y = np.sqrt(1 - x**2)
+    data_red = np.zeros((4, 4*num))
+    for i in range(4*num):
+        vx = np.cos(ratio_[i]) * lin_vel_x
+        vy = np.cos(ratio_[i]) * lin_vel_y
+        vt = np.sin(ratio_[i]) * ang_vel
+        f = planar_lugre_reduced.step(vel_vec=vel_to_cop(-cop, vel_vec={'x': vx, 'y': vy, 'tau': vt}))
+        #f = planar_lugre_reduced.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
+        f = planar_lugre_reduced.force_at_cop
 
-    data_red = np.zeros((4, num_))
-
-    for i in range(num_):
-
-        f = planar_lugre_reduced.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
         data_red[0, i] = f['x']
         data_red[1, i] = f['y']
         data_red[2, i] = f['tau']
         data_red[3, i] = rot_z.dot(np.array([f['x'], f['y']]).T)[0]
 
 
-    max_save_red = np.max(data_red, axis=1)
-    data_red = data_red.T / max_save_red
+    data_red = data_red.T / max_save
     data_red = data_red.T
 
     for i in range(4):
@@ -415,13 +412,12 @@ def update_ellipse(shape,
 
 
     arrows = []
-    vx = ratio*lin_vel_x
-    vy = ratio*lin_vel_y
-
-    vt = (1-ratio)*ang_vel
+    vx = np.cos(ratio)*lin_vel_x
+    vy = np.cos(ratio)*lin_vel_y
+    vt = np.sin(ratio)*ang_vel
     v3 = vel_to_cop(-cop, vel_vec={'x': vx, 'y': vy, 'tau': vt})
 
-    f_ = planar_lugre.step(v3)
+    f = planar_lugre.step(v3)
     f = planar_lugre.force_at_cop
 
     dx = rot_z.dot(np.array([f['x'], f['y']]).T)[0]/ max_save[3]
@@ -429,8 +425,10 @@ def update_ellipse(shape,
 
     arrows += [return_arrow(0, 0, dx, dy, 'blue')]
     f = planar_lugre_reduced.step(v3)
-    dx = rot_z.dot(np.array([f['x'], f['y']]).T)[0] / max_save_red[3]
-    dy = f['tau'] / max_save_red[2]
+    f = planar_lugre_reduced.force_at_cop
+
+    dx = rot_z.dot(np.array([f['x'], f['y']]).T)[0] / max_save[3]
+    dy = f['tau'] / max_save[2]
 
     arrows += [return_arrow(0, 0, dx, dy, 'green')]
 
@@ -446,9 +444,9 @@ def update_ellipse(shape,
 
     config = {'toImageButtonOptions': {'format': format_value}}
 
-    data3d = np.zeros((3, num_*(2*num)))
-    directione3 = np.linspace(0, 2*np.pi, num_)
-    for j in range(num_):
+    data3d = np.zeros((3, 4*num*(2*num)))
+    directione3 = np.linspace(0, 2*np.pi, 4*num)
+    for j in range(4*num):
         direction = directione3[j]
         lin_vel_x = np.cos(direction) * lin_vel
         lin_vel_y = np.sin(direction) * lin_vel
@@ -463,13 +461,13 @@ def update_ellipse(shape,
 
         for i in range(num):
             f = planar_lugre_reduced.step(vel_vec={'x': lin_vel_x_list[i], 'y': lin_vel_y_list[i], 'tau': ang_vel_list[i]})
-            #f = planar_lugre.force_at_cop
+            f = planar_lugre_reduced.force_at_cop
             data3d[0, i+j*num] = f['x']
             data3d[1, i+j*num] = f['y']
             data3d[2, i+j*num] = f['tau']
-            data3d[0, i + j * num + num_*num] = -f['x']
-            data3d[1, i + j * num +num_*num] = -f['y']
-            data3d[2, i + j * num  +num_*num] = -f['tau']
+            data3d[0, i + j * num + 4*num*num] = -f['x']
+            data3d[1, i + j * num + 4*num*num] = -f['y']
+            data3d[2, i + j * num  +4*num*num] = -f['tau']
     max_save3d = np.max(data3d, axis=1)
     data3d = data3d.T / max_save3d
     data3d = data3d.T
