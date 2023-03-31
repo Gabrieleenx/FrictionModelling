@@ -6,7 +6,7 @@ import surfaces.surfaces as surf
 from velocity_profiles import *
 from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
 
-properties = {'grid_shape': (21, 21),  # number of grid elements in x any
+properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
               'mu_c': 1,
               'mu_s': 1.3,
@@ -21,7 +21,9 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               'z_ba_ratio': 0.9,
               'steady_state': False}
 
-shape = surf.p_square
+
+
+shape = surf.p_line_grad
 time = 1
 
 n_steps = int(time / properties['dt'])

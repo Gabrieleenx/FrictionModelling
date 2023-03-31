@@ -11,6 +11,7 @@ class CustomHashList3D(object):
         self.cop = np.zeros(2)
         self.gamma = 1
         self.omega_max = 1
+        self.pos = np.zeros(2)
 
     def get_closest_samples(self, vel, gamma):
         n = self.num_segments
@@ -71,44 +72,46 @@ class CustomHashList3D(object):
 
         return np.array([ls_x, ls_y, ls_tau])
 
-
-    def calc_new_vel(self, vel_cop, gamma):
-        ls_0 = self.get_bilinear_interpolation(vel={'x': 0, 'y': 0, 'tau': 1}, gamma=gamma)
-        ax = np.arctan2(ls_0[2], ls_0[0]) + np.pi/2
-        ay = np.arctan2(ls_0[2], ls_0[1]) + np.pi/2
+    def pre_compute_new_vel(self):
+        ls_0 = self.get_bilinear_interpolation(vel={'x': 0, 'y': 0, 'tau': 1}, gamma=self.gamma)
+        ax = np.arctan2(ls_0[2], ls_0[0]) + np.pi / 2
+        ay = np.arctan2(ls_0[2], ls_0[1]) + np.pi / 2
 
         iter_ = 5
         rx = ax
         ry = ay
 
-
         for i in range(iter_):
-            vx = gamma * np.sin(rx)
-            vy = gamma * np.sin(ry)
+            vx = self.gamma * np.sin(rx)
+            vy = self.gamma * np.sin(ry)
 
-            ls_ = self.get_bilinear_interpolation(vel={'x': vx, 'y': vy, 'tau': 1}, gamma=gamma)
+            ls_ = self.get_bilinear_interpolation(vel={'x': vx, 'y': vy, 'tau': 1}, gamma=self.gamma)
             bx = np.arctan2(ls_[2], ls_[0]) + np.pi / 2 + ax
             by = np.arctan2(ls_[2], ls_[1]) + np.pi / 2 + ay
 
             if ax != 0:
-                rx = rx*bx/ax
+                rx = rx * bx / ax
             if ay != 0:
-                ry = ry*by/ay
+                ry = ry * by / ay
 
-        vx = gamma * np.sin(rx)
-        vy = gamma * np.sin(ry)
+        vx = self.gamma * np.sin(rx)
+        vy = self.gamma * np.sin(ry)
 
         p_x = -vy
         p_y = vx
 
-        pos = np.array([p_x, p_y])*gamma/self.gamma
-        new_vel = vel_to_cop(pos, vel_cop)
+        self.pos = np.array([p_x, p_y]) / self.gamma
 
-        p_xy_n = np.linalg.norm([p_x, p_y])
+    def calc_new_vel(self, vel_cop, gamma):
+
+        pos = self.pos*gamma
+        new_vel = vel_to_cop(pos, vel_cop)
+        p_xy_n = np.linalg.norm([pos[0], pos[1]])
+
         r = 0
         if p_xy_n != 0:
-            p_x_n = abs(p_x)/p_xy_n
-            p_y_n = abs(p_y)/p_xy_n
+            p_x_n = abs(pos[0])/p_xy_n
+            p_y_n = abs(pos[1])/p_xy_n
             nn = np.linalg.norm([vel_cop['x']*p_x_n, vel_cop['y']*p_y_n])/self.gamma
             r = (2*np.arctan2(abs(vel_cop['tau']), nn))/(np.pi)
 
@@ -210,6 +213,7 @@ class CustomHashList3D(object):
                 f1, f2, f3, f4, idx = self.calc_4_points(friction_model, r, i, f_t_max, f_tau_max)
                 self.add_to_list(idx, f1, f2, f3, f4)
 
+        self.pre_compute_new_vel()
 
 def normalize_force(f, f_t_max, f_tau_max):
     f_norm = {'x': f['x']/f_t_max, 'y': f['y']/f_t_max, 'tau': f['tau']/f_tau_max}
