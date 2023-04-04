@@ -23,8 +23,8 @@ properties = {'grid_shape': (20, 20),  # number of grid elements in x any
 
 
 
-shape = surf.p_line_grad
-time = 1
+shape = surf.PObject(properties['grid_size'], properties['grid_shape'], surf.p_line)
+time = 2
 
 n_steps = int(time / properties['dt'])
 
@@ -45,6 +45,7 @@ data_reduced = np.zeros((4, n_steps))  # t, fx, fy, f_tau
 
 # running simulation
 
+print('Full model')
 for i in tqdm(range(n_steps)):
     t = i * properties['dt']
     vel = vel_gen_5(t)
@@ -58,6 +59,16 @@ for i in tqdm(range(n_steps)):
     data_full[1, i] = f['x']
     data_full[2, i] = f['y']
     data_full[3, i] = f['tau']
+
+print('Reduced model')
+
+for i in tqdm(range(n_steps)):
+    t = i * properties['dt']
+    vel = vel_gen_5(t)
+    data_vel[0, i] = t
+    data_vel[1, i] = vel['x']
+    data_vel[2, i] = vel['y']
+    data_vel[3, i] = vel['tau']
 
     f = planar_lugre_reduced.step(vel_vec=vel)
     data_reduced[0, i] = t

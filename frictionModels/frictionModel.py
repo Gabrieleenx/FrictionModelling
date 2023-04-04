@@ -113,6 +113,7 @@ class FullFrictionModel(FrictionBase):
         super().__init__(properties)
         self.velocity_grid = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))
         self.lugre = self.initialize_lugre()
+        self.p_x_y = None
 
     def step_single_point(self, vel_vec: Dict[str, float]) -> Dict[str, float]:
         """
@@ -125,11 +126,16 @@ class FullFrictionModel(FrictionBase):
         force_at_center = self.approximate_integral()
         self.force_at_cop = self.move_force_to_cop(force_at_center)
 
-        #force = self.move_force_to_center(self.force_at_cop)
-
         return force_at_center
 
+    def set_fn(self, fn):
+        self.p_x_y.set_fn(fn)
+        self.fn = fn
+
     def step(self, vel_vec: Dict[str, float]) -> Dict[str, float]:
+
+        self.normal_force_grid, self.cop, self.fn = self.p_x_y.get(self.p['grid_size'])
+
         if not self.p['steady_state']:
             return self.step_single_point(vel_vec)
         else:
@@ -194,7 +200,10 @@ class FullFrictionModel(FrictionBase):
 
             return force_at_center
     def update_p_x_y(self, p_x_y):
-        self.update_cop_and_force_grid(p_x_y)
+        #self.update_cop_and_force_grid(p_x_y)
+        self.p_x_y = p_x_y
+        self.normal_force_grid, self.cop, self.fn = self.p_x_y.get(self.p['grid_size'])
+
 
     def update_velocity_grid(self, vel_vec):
         u = np.array([0, 0, 1])
@@ -206,7 +215,8 @@ class FullFrictionModel(FrictionBase):
     def initialize_lugre(self):
         z = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))  # bristles
         f = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))  # tangential force at each grid cell
-        return {'z': z, 'f': f}
+        dz = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))  # derivative of bristles
+        return {'z': z, 'f': f, 'dz': dz}
 
     def update_lugre(self):
         v_norm = np.linalg.norm(self.velocity_grid, axis=0)
@@ -230,7 +240,7 @@ class FullFrictionModel(FrictionBase):
 
         self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
                            self.p['s2'] * self.velocity_grid) * self.normal_force_grid
-
+        self.lugre['dz'] = dz
         self.lugre['z'] += dz * self.p['dt']
 
     def steady_state_z(self, v_norm, g):
@@ -257,6 +267,18 @@ class FullFrictionModel(FrictionBase):
         tau = np.cross(self.pos_matrix_2d, self.lugre['f'], axis=0)
         return {'x': fx, 'y': fy, 'tau': -np.sum(tau)}
 
+    def ode_step(self, t, y, vel):
+        shape_ = self.lugre['z'].shape
+
+        self.lugre['z'] = np.reshape(y, shape_)
+        vel_vec = {'x': vel[0], 'y': vel[1], 'tau': vel[2]}
+        f = self.step_single_point(vel_vec)
+        dy = self.lugre['dz']
+        return np.reshape(dy, np.prod(shape_)).tolist(), f
+
+    def ode_init(self):
+        shape_ = self.lugre['z'].shape
+        return np.reshape(self.lugre['z'], np.prod(shape_)).tolist()
 
 class ReducedFrictionModel(FrictionBase):
     def __init__(self, properties: Dict[str, any], nr_ls_segments: int = 20, ls_active: bool = True):
@@ -269,13 +291,16 @@ class ReducedFrictionModel(FrictionBase):
         self.lugre = self.initialize_lugre()
         self.ls_active = ls_active
 
+    def set_fn(self, fn):
+        self.p_x_y.set_fn(fn)
+
     def step(self, vel_vec: Dict[str, float]) -> Dict[str, float]:
         """
         This function does one time step of the friction model
         :param vel_vec:
         :return:
         """
-
+        p, self.cop, self.fn = self.p_x_y.get(self.p['grid_size'])
         vel_cop = vel_to_cop(self.cop, vel_vec)
 
         self.update_lugre(vel_cop)
@@ -300,18 +325,23 @@ class ReducedFrictionModel(FrictionBase):
         f = np.zeros(3)  # tangential force at each grid cell
         return {'z': z, 'f': f}
 
-    def update_p_x_y(self, p_x_y):
-        self.p_x_y = p_x_y
-        self.update_cop_and_force_grid(p_x_y)
-
-    def update_pre_compute(self):
-        # limit surface
+    def update_p_x_y(self, p_x_y_object):
+        self.p_x_y = p_x_y_object
         self.full_model.update_p_x_y(self.p_x_y)
-        self.limit_surface.initialize(self.full_model)
         # gamma radius
         self.gamma = update_radius(self.full_model)
         # viscus scale
         self.viscous_scale = update_viscus_scale(self.full_model, self.gamma, self.cop)
+        #self.update_cop_and_force_grid(p_x_y)
+
+    def update_pre_compute(self):
+        # limit surface
+        #self.full_model.update_p_x_y(self.p_x_y)
+        self.limit_surface.initialize(self.full_model)
+        # gamma radius
+        #self.gamma = update_radius(self.full_model)
+        # viscus scale
+        #self.viscous_scale = update_viscus_scale(self.full_model, self.gamma, self.cop)
 
     def update_lugre(self, vel_cop):
         vel_cop_tau = np.array([vel_cop['x'], vel_cop['y'], vel_cop['tau']*self.gamma])
@@ -352,7 +382,7 @@ class ReducedFrictionModel(FrictionBase):
         self.lugre['f'] = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
                             self.viscous_scale * self.p['s2'] * vel_cop_tau) * self.fn
         self.lugre['f'][2] = self.lugre['f'][2]*self.gamma
-
+        self.lugre['dz'] = dz
         self.lugre['z'] += dz * self.p['dt']
 
     def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
@@ -375,4 +405,64 @@ class ReducedFrictionModel(FrictionBase):
         force_vec = {}
         ratio = 0
         return force_vec, ratio
+
+
+    def ode_step(self, t, y, vel):
+        shape_ = self.lugre['z'].shape
+
+        self.lugre['z'] = np.reshape(y, shape_)
+        vel_vec = {'x': vel[0], 'y': vel[1], 'tau': vel[2]}
+        f = self.step(vel_vec)
+        dy = self.lugre['dz']
+        return np.reshape(dy, np.prod(shape_)).tolist(), f
+
+    def ode_init(self):
+        shape_ = self.lugre['z'].shape
+        return np.reshape(self.lugre['z'], np.prod(shape_)).tolist()
+
+
+class LuGre1D(object):
+    def __init__(self, properties: Dict[str, any], fn: float):
+        self.p = properties
+        self.fn = fn
+
+    def ode_step(self, t, y, vel):
+
+        z = y[0]
+        dx = vel[0]
+
+        # Parameters
+        my_d = self.p["mu_c"]
+        my_s = self.p["mu_s"]
+        dx_s = self.p["v_s"]
+        sigma_0 = self.p["s0"]
+        sigma_1 = self.p["s1"]
+        sigma_2 = self.p["s2"]
+        z_ba_r = self.p["z_ba_ratio"]
+        alpha = self.p["alpha"]
+
+        if abs(dx) == 0:
+            z_ss = my_s / sigma_0
+        else:
+            f_ss = ((my_s - my_d) * np.exp(-(dx / dx_s) ** alpha) + my_d) * np.sign(dx)
+            z_ss = f_ss / sigma_0
+
+        if abs(z) <= z_ba_r*z_ss:
+            alpha = 0
+        elif abs(z) >= z_ss:
+            alpha = 1
+        else:
+            alpha = 0.5 * np.sin(np.pi * (abs(z) - (z_ss+z_ba_r*z_ss) / 2) / (z_ss - z_ba_r*z_ss)) + 0.5
+
+        dz = (1 - alpha * z / z_ss) * dx
+
+        mu = sigma_0 * z + sigma_1 * dz + sigma_2 * dx
+
+        fx = - mu * self.fn
+        f = {'x': fx, 'y': 0, 'tau': 0}
+
+        return [dz], f
+
+    def ode_init(self):
+        return [0]
 

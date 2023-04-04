@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from utils import *
 from frictionModels.utils import vel_to_cop, CustomHashList3D
 from layout import get_layout
-from surfaces.surfaces import p_square, p_line, p_circle, p_line_grad
+from surfaces.surfaces import p_square, p_line, p_circle, p_line_grad, PObject
 from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -64,10 +64,11 @@ def update_surface_data(model,
                   'steady_state': True}
 
     data = dict()
+    p_obj = PObject(properties['grid_size'], properties['grid_shape'], shape_set[shape])
 
     if 'Full' in model:
         planar_lugre = FullFrictionModel(properties=properties)
-        planar_lugre.update_p_x_y(shape_set[shape])
+        planar_lugre.update_p_x_y(p_obj)
         f_surf, t_surf, x_y = calc_surface(planar_lugre, lin_vel_range, ang_vel_range, res, direction)
         data_local = dict()
         data_local['f'] = f_surf
@@ -78,7 +79,7 @@ def update_surface_data(model,
 
     if 'Reduced with LS' in model:
         planar_lugre_reduced = ReducedFrictionModel(properties=properties)
-        planar_lugre_reduced.update_p_x_y(shape_set[shape])
+        planar_lugre_reduced.update_p_x_y(p_obj)
         planar_lugre_reduced.update_pre_compute()
         f_surf, t_surf, x_y = calc_surface(planar_lugre_reduced, lin_vel_range, ang_vel_range, res, direction)
         data_local = dict()
@@ -90,7 +91,7 @@ def update_surface_data(model,
 
     if 'Reduced with ellipse' in model:
         planar_lugre_reduced_ellipse = ReducedFrictionModel(properties=properties, ls_active=False)
-        planar_lugre_reduced_ellipse.update_p_x_y(shape_set[shape])
+        planar_lugre_reduced_ellipse.update_p_x_y(p_obj)
         planar_lugre_reduced_ellipse.update_pre_compute()
         f_surf, t_surf, x_y = calc_surface(planar_lugre_reduced_ellipse, lin_vel_range, ang_vel_range, res, direction)
         data_local = dict()
@@ -205,9 +206,10 @@ def update_contact(shape,
                   'elasto_plastic': True,
                   'z_ba_ratio': 0.9,
                   'steady_state': True}
+    p_obj = PObject(properties['grid_size'], properties['grid_shape'], shape_set[shape])
 
     planar_lugre = FullFrictionModel(properties=properties)
-    planar_lugre.update_p_x_y(shape_set[shape])
+    planar_lugre.update_p_x_y(p_obj)
     cop = planar_lugre.cop
     lin_vel_x = np.cos(direction)*lin_vel
     lin_vel_y = np.sin(direction)*lin_vel
@@ -327,12 +329,13 @@ def update_ellipse(shape,
                   'z_ba_ratio': 0.9,
                   'steady_state': True}
 
+    p_obj = PObject(properties['grid_size'], properties['grid_shape'], shape_set[shape])
 
     planar_lugre = FullFrictionModel(properties=properties)
     planar_lugre_reduced = ReducedFrictionModel(properties=properties, nr_ls_segments=20)
 
-    planar_lugre.update_p_x_y(shape_set[shape])
-    planar_lugre_reduced.update_p_x_y(shape_set[shape])
+    planar_lugre.update_p_x_y(p_obj)
+    planar_lugre_reduced.update_p_x_y(p_obj)
     planar_lugre_reduced.update_pre_compute()
     planar_lugre_reduced.ls_active = True
 

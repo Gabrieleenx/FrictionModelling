@@ -1,5 +1,5 @@
 from utils import vel_to_cop, CustomHashList3D
-from surfaces.surfaces import p_square, p_line, p_circle, p_line_grad
+from surfaces.surfaces import p_square, p_line, p_circle, p_line_grad, PObject
 from frictionModel import FullFrictionModel, ReducedFrictionModel
 import numpy as np
 
@@ -22,8 +22,10 @@ shape = 'LineGrad'
 planar_lugre = FullFrictionModel(properties=properties)
 planar_lugre_reduced = ReducedFrictionModel(properties=properties, nr_ls_segments=20)
 
-planar_lugre.update_p_x_y(shape_set[shape])
-planar_lugre_reduced.update_p_x_y(shape_set[shape])
+p_obj = PObject(properties['grid_size'], properties['grid_shape'], shape_set[shape])
+
+planar_lugre.update_p_x_y(p_obj)
+planar_lugre_reduced.update_p_x_y(p_obj)
 planar_lugre_reduced.update_pre_compute()
 vel = {'x': 0.01, 'y': 0.01, 'tau': 1}
 
