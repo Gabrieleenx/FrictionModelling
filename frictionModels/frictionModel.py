@@ -234,14 +234,16 @@ class FullFrictionModel(FrictionBase):
         else:
             dz = self.velocity_grid - self.lugre['z'] * (self.p['s0'] * (v_norm / g))
 
+
         if self.p['stability']:
             delta_z = (z_ss - self.lugre['z']) / self.p['dt']
             dz = np.min([abs(dz), abs(delta_z)], axis=0)*np.sign(dz)
 
+        self.lugre['z'] += dz * self.p['dt']
+
         self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
                            self.p['s2'] * self.velocity_grid) * self.normal_force_grid
         self.lugre['dz'] = dz
-        self.lugre['z'] += dz * self.p['dt']
 
     def steady_state_z(self, v_norm, g):
         v_norm1 = v_norm.copy()
@@ -379,11 +381,12 @@ class ReducedFrictionModel(FrictionBase):
 
             dz = np.min([abs(dz), abs(delta_z)], axis=0) * np.sign(dz)
 
+        self.lugre['z'] += dz * self.p['dt']
+
         self.lugre['f'] = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
                             self.viscous_scale * self.p['s2'] * vel_cop_tau) * self.fn
         self.lugre['f'][2] = self.lugre['f'][2]*self.gamma
         self.lugre['dz'] = dz
-        self.lugre['z'] += dz * self.p['dt']
 
     def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
         ls = self.limit_surface.get_bilinear_interpolation(vel_cop, self.gamma)

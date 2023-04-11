@@ -14,6 +14,12 @@ class CustomHashList3D(object):
         self.pos = np.zeros(2)
 
     def get_closest_samples(self, vel, gamma):
+        """
+        Get the closest samples and location
+        :param vel: {'x': vx, 'y': vy, 'tau': vtau}
+        :param gamma: radius
+        :return: f[0], f[1], f[2], f[3], dr, di
+        """
         n = self.num_segments
         a1_ = np.arctan2(vel['y'], vel['x'])
 
@@ -51,11 +57,11 @@ class CustomHashList3D(object):
 
     def get_bilinear_interpolation(self, vel, gamma, cop=np.zeros(2)):
         """
-
-        :param vel:
-        :param gamma:
-        :param cop:
-        :return:
+        Calculate the bilinear interpolation
+        :param vel: {'x': fx, 'y': fy, 'tau': ftau}
+        :param gamma: radius
+        :param cop: np.array (2,)
+        :return: np.array (3,)
         """
         vel_cop = vel_to_cop(cop, vel)
 
@@ -73,6 +79,10 @@ class CustomHashList3D(object):
         return np.array([ls_x, ls_y, ls_tau])
 
     def pre_compute_new_vel(self):
+        """
+        Pre-compute for calc_new_vel
+        :return:
+        """
         ls_0 = self.get_bilinear_interpolation(vel={'x': 0, 'y': 0, 'tau': 1}, gamma=self.gamma)
         ax = np.arctan2(ls_0[2], ls_0[0]) + np.pi / 2
         ay = np.arctan2(ls_0[2], ls_0[1]) + np.pi / 2
@@ -103,7 +113,12 @@ class CustomHashList3D(object):
         self.pos = np.array([p_x, p_y]) / self.gamma
 
     def calc_new_vel(self, vel_cop, gamma):
-
+        """
+        Calculate velocity at a rotation point
+        :param vel_cop: {'x': vx, 'y': vy, 'tau': vtau}
+        :param gamma: radius
+        :return: {'x': fx, 'y': fy, 'tau': ftau}
+        """
         pos = self.pos*gamma
         new_vel = vel_to_cop(pos, vel_cop)
         p_xy_n = np.linalg.norm([pos[0], pos[1]])
@@ -123,6 +138,13 @@ class CustomHashList3D(object):
 
 
     def get_if_calc(self, r, i, j):
+        """
+        Is it necessary to calculate a new velocity or can we reuse.
+        :param r: index
+        :param i: index
+        :param j: index
+        :return: bool, {'x': fx, 'y': fy, 'tau': ftau}
+        """
         state = False
         value = None
         if j == 0:
@@ -149,6 +171,13 @@ class CustomHashList3D(object):
 
 
     def calc_vel(self, r, i, j):
+        """
+        Calculate velocity for a index
+        :param r: index
+        :param i: index
+        :param j: index
+        :return: vx, vy, vtau
+        """
         if j == 0 or j == 1:
             r1 = np.tan(i * np.pi/ (2*self.num_segments))
 
@@ -167,14 +196,20 @@ class CustomHashList3D(object):
         return vx, vy, vtau
 
     def calc_idx(self, r, i):
+        """
+        From two dim to one dim index
+        :param r: index direction on fx and fy
+        :param i: index angle between torque and fx, fy
+        :return: index
+        """
         return r*self.num_segments + i
 
     def calc_4_points(self, friction_model, r, i, f_t_max, f_tau_max):
         """
         Calculates the corners far a patch on the surface
-        :param friction_model:
-        :param r:
-        :param i:
+        :param friction_model: friction model class
+        :param r: index
+        :param i: index
         :return:
         """
         f = [None]*4
@@ -195,8 +230,22 @@ class CustomHashList3D(object):
         return f[0], f[1], f[2], f[3], idx
 
     def add_to_list(self, idx, f1, f2, f3, f4):
+        """
+        Adds to the hash list
+        :param idx: index in hash list
+        :param f1: {'x': fx, 'y': fy, 'tau': ftau}
+        :param f2: {'x': fx, 'y': fy, 'tau': ftau}
+        :param f3: {'x': fx, 'y': fy, 'tau': ftau}
+        :param f4: {'x': fx, 'y': fy, 'tau': ftau}
+        :return:
+        """
         self.list[idx] = [f1, f2, f3, f4]
     def initialize(self, friction_model):
+        """
+        Initialize with friction model class
+        :param friction_model: friction model class
+        :return:
+        """
         self.cop = friction_model.cop
         _ = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 1, 'y': 0, 'tau': 0}))
         f1 = friction_model.force_at_cop
@@ -216,17 +265,24 @@ class CustomHashList3D(object):
         self.pre_compute_new_vel()
 
 def normalize_force(f, f_t_max, f_tau_max):
+    """
+    normalize the force
+    :param f: {'x': fx, 'y': fy, 'tau': ftau}
+    :param f_t_max: max translational force flaat
+    :param f_tau_max: max torque float
+    :return:
+    """
     f_norm = {'x': f['x']/f_t_max, 'y': f['y']/f_t_max, 'tau': f['tau']/f_tau_max}
     return f_norm
 
 def elasto_plastic_alpha(z, z_ss, z_ba_r, v):
     """
-    Calculates the alpha for elasto plastic model.
-    :param z:
-    :param z_ss:
-    :param z_ba_r:
-    :param v:
-    :return:
+    Calculates the alpha for elasto-plastic model.
+    :param z: bristle deformation np.array (2,) or (3,)
+    :param z_ss: steady state deflection np.array (2,) or (3,)
+    :param z_ba_r: ratio between 0-1 float
+    :param v: np.array (2,) or (3,)
+    :return: float
     """
     z_norm = np.linalg.norm(z)
     z_max = np.linalg.norm(z_ss)
@@ -251,6 +307,11 @@ def elasto_plastic_alpha(z, z_ss, z_ba_r, v):
 
 
 def update_radius(full_model):
+    """
+    Calculates the radius for the reduced model
+    :param full_model: python class
+    :return: radius
+    """
     cop = full_model.cop
     fn = full_model.fn
     mu = full_model.p['mu_c']
@@ -268,6 +329,13 @@ def update_radius(full_model):
 
 
 def update_viscus_scale(full_model, gamma, cop):
+    """
+    Calculates scaling for viscus friction
+    :param full_model: python class
+    :param gamma: radius
+    :param cop: np.array([x, y])
+    :return:
+    """
     mu_c = full_model.p['mu_c']
     mu_s = full_model.p['mu_s']
     s2 = full_model.p['s2']
@@ -285,6 +353,12 @@ def update_viscus_scale(full_model, gamma, cop):
 
 
 def vel_to_cop(cop, vel_vec):
+    """
+    Move velocity to cop
+    :param cop: np.array([x, y])
+    :param vel_vec: {'x': v_x, 'y': v_y, 'tau': v_tau}
+    :return: {'x': v_x, 'y': v_y, 'tau': v_tau}
+    """
     u = np.array([0, 0, 1])
     w = vel_vec['tau'] * u
     pos_vex = np.zeros(3)
