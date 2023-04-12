@@ -35,7 +35,12 @@ namespace utils {
         std::vector<std::vector<std::vector<double>>> f; // [shape x, shape y, 2]
     };
     
-    
+    struct lugre_red
+    {
+        std::vector<double> z; // [shape x, shape y, 2]
+        std::vector<double> f; // [shape x, shape y, 2]
+    };
+      
 
     struct shape_info {
         double fn;
@@ -43,6 +48,24 @@ namespace utils {
         std::vector<double> cop_norm; // [x,y]
         std::vector<std::vector<double>> f_n_grid; // row = ix and col = iy, i.e. f_n_grid[ix, iy]
         std::vector<std::vector<double>> f_n_grid_norm; // row = ix and col = iy, i.e. f_n_grid[ix, iy]
+    };
+
+    struct if_calc{
+        bool state;
+        std::vector<double> value = std::vector<double>(3, 0.0);
+    };
+
+    struct four_points{
+        std::vector<double> f1;
+        std::vector<double> f2;
+        std::vector<double> f3;
+        std::vector<double> f4;
+    };
+
+    struct closest_sample{
+        four_points force;
+        double dr;
+        double di;
     };
 
     class P_x_y{
@@ -72,4 +95,9 @@ namespace utils {
     std::vector<double> crossProduct(const std::vector<double>& v1, const std::vector<double>& v2);
 
     double elasto_plastic(std::vector<double> z, std::vector<double> z_ss, double z_ba_r, std::vector<double> v, int size);
+
+    vec vel_to_point(std::vector<double> cop, vec vel);
+
+    std::vector<double> negate_vector(const std::vector<double>& vec);
+    
 }

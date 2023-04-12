@@ -1,10 +1,14 @@
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
+import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
+
 from tqdm import tqdm
 import sys
 sys.path.append('..')  # add the parent directory to the Python path
 import surfaces.surfaces as surf
 from frictionModels.frictionModel import FullFrictionModel
 fic = cpp.FullFrictionModel()
+red_fic = red_cpp.ReducedFrictionModel()
+
 properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
               'mu_c': 1,
@@ -14,11 +18,11 @@ properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               's0': 1e5,
               's1': 2e1,
               's2': 0.4,
-              'dt': 1e-5,
+              'dt': 1e-4,
               'z_ba_ratio': 0.9,
-              'stability': False,
+              'stability': True,
               'elasto_plastic': True,
-              'steady_state': False}
+              'steady_state': True}
 
 def properties_to_list(prop):
     list_ = []
@@ -33,6 +37,7 @@ def properties_to_list(prop):
 shape_name = "Square"
 fn = 1.1
 fic.init(properties_to_list(properties), shape_name, fn)
+red_fic.init(properties_to_list(properties), shape_name, fn)
 print("cpp package")
 
 for i in tqdm(range(50)):

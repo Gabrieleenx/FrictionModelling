@@ -5,6 +5,7 @@ from tqdm import tqdm
 import surfaces.surfaces as surf
 from velocity_profiles import *
 from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
+import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 
 properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               'grid_size': 1e-3,  # the physical size of each grid element
@@ -15,15 +16,29 @@ properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               's0': 1e5,
               's1': 2e1,
               's2': 0.4,
-              'dt': 1e-3,
-              'stability': True,
-              'elasto_plastic': True,
+              'dt': 1e-4,
               'z_ba_ratio': 0.9,
-              'steady_state': False}
+              'stability': False,
+              'elasto_plastic': True,
+              'steady_state': True}
 
+def properties_to_list(prop):
+    list_ = []
+    for index, key in enumerate(prop):
+        if key == "grid_shape":
+            list_.append(prop[key][0])
+            list_.append(prop[key][1])
+        else:
+            list_.append(prop[key])
+    return list_
 
+fic = cpp.FullFrictionModel()
 
-shape = surf.PObject(properties['grid_size'], properties['grid_shape'], surf.p_line)
+shape_name = "Square"
+fn = 1.0
+fic.init(properties_to_list(properties), shape_name, fn)
+
+shape = surf.PObject(properties['grid_size'], properties['grid_shape'], surf.p_square)
 time = 2
 
 n_steps = int(time / properties['dt'])
@@ -54,7 +69,9 @@ for i in tqdm(range(n_steps)):
     data_vel[2, i] = vel['y']
     data_vel[3, i] = vel['tau']
 
-    f = planar_lugre.step(vel_vec=vel)
+    #f = planar_lugre.step(vel_vec=vel)
+    f_ = fic.step([vel['x'], vel['y'], vel['tau']])
+    f = {'x':f_[0],'y':f_[1],'tau':f_[2]}
     data_full[0, i] = t
     data_full[1, i] = f['x']
     data_full[2, i] = f['y']

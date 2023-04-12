@@ -282,6 +282,7 @@ class FullFrictionModel(FrictionBase):
         shape_ = self.lugre['z'].shape
         return np.reshape(self.lugre['z'], np.prod(shape_)).tolist()
 
+
 class ReducedFrictionModel(FrictionBase):
     def __init__(self, properties: Dict[str, any], nr_ls_segments: int = 20, ls_active: bool = True):
         super().__init__(properties)

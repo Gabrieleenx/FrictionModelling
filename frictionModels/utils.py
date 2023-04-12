@@ -240,6 +240,7 @@ class CustomHashList3D(object):
         :return:
         """
         self.list[idx] = [f1, f2, f3, f4]
+
     def initialize(self, friction_model):
         """
         Initialize with friction model class
@@ -368,4 +369,6 @@ def vel_to_cop(cop, vel_vec):
     v_y = vel_vec['y'] + v_tau[1]
     v_tau = vel_vec['tau']
     return {'x': v_x, 'y': v_y, 'tau': v_tau}
+
+
 

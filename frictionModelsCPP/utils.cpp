@@ -137,3 +137,29 @@ double utils::elasto_plastic(std::vector<double> z, std::vector<double> z_ss, do
 
     return alpha;
 }
+
+
+utils::vec utils::vel_to_point(std::vector<double> cop, vec vel){
+    std::vector<double> w3(3, 0.0);
+    std::vector<double> cop3(3, 0.0);
+    std::vector<double> v_tau;
+    utils::vec vel_cop;
+
+    w3[2] = vel.tau;
+    cop3[0] = cop[0]; cop3[1] = cop[1];
+    v_tau = utils::crossProduct(w3, cop3);
+    vel_cop.x = vel.x + v_tau[0];
+    vel_cop.y = vel.y + v_tau[1];
+    vel_cop.tau = vel.tau;
+    return vel_cop;
+}
+
+
+std::vector<double> utils::negate_vector(const std::vector<double>& vec){
+    std::vector<double> neg_vec(vec.size());
+    for (std::size_t i = 0; i < vec.size(); ++i) {
+        neg_vec[i] = -vec[i];
+    }
+    return neg_vec;
+}
+

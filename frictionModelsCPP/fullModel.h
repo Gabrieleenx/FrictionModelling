@@ -18,6 +18,7 @@ class FullFrictionModel{
 
         std::vector<double> step_single_point();
         std::vector<double> step_bilinear();
+        std::vector<double> force_vec_cop;
 
         void update_velocity_grid(utils::vec vel);
         void update_lugre();
@@ -27,6 +28,11 @@ class FullFrictionModel{
     public:
         FullFrictionModel(){};
         void init(pybind11::list py_list, std::string shape_name, double fn);
+        void init_cpp(utils::properties properties_, std::string shape_name, double fn);
         std::vector<double> step(pybind11::list py_list);
+        std::vector<double> step_cpp(utils::vec vel);
+        std::vector<double> get_cop();
+        utils::properties get_properties();
+        std::vector<double> get_force_at_cop();
 };
 

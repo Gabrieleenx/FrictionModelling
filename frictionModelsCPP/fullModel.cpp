@@ -43,11 +43,67 @@ void FullFrictionModel::init(pybind11::list py_list, std::string shape_name, dou
 }
 
 
+void FullFrictionModel::init_cpp(utils::properties properties_, std::string shape_name, double fn){
+    
+    properties = properties_;
+
+    p_x_y.init(shape_name, properties.grid_size, properties.grid_shape, fn);
+
+    int n_x = properties.grid_shape[0];
+    std::vector<double> position_vec_x_new(n_x, 0.0);
+    for (int ix = 0; ix<n_x; ix++){
+        position_vec_x_new[ix] = (ix + 0.5 - n_x/2.0)*properties.grid_size;
+    }
+    position_vec_x.assign(position_vec_x_new.begin(), position_vec_x_new.end());
+
+    int n_y = properties.grid_shape[1];
+    std::vector<double> position_vec_y_new(n_y, 0.0);
+    for (int iy = 0; iy<n_y; iy++){
+        position_vec_y_new[iy] = (iy + 0.5 - n_y/2.0)*properties.grid_size;
+    }
+    position_vec_y.assign(position_vec_y_new.begin(), position_vec_y_new.end());
+
+    std::vector<std::vector<std::vector<double>>> lugre_f(properties.grid_shape[0], std::vector<std::vector<double>>(properties.grid_shape[1], std::vector<double>(int(2), 0.0)));
+    lugre.f = lugre_f;
+
+    std::vector<std::vector<std::vector<double>>> lugre_z(properties.grid_shape[0], std::vector<std::vector<double>>(properties.grid_shape[1], std::vector<double>(int(2), 0.0)));
+    lugre.z = lugre_z;
+
+    shape_info_var = p_x_y.get(properties.grid_size);
+
+}
+
+std::vector<double> FullFrictionModel::get_cop(){
+    return shape_info_var.cop;
+}
+
+
+utils::properties FullFrictionModel::get_properties(){
+    return properties;
+}
+
+std::vector<double> FullFrictionModel::get_force_at_cop(){
+    return force_vec_cop;
+}
+
+
 std::vector<double> FullFrictionModel::step(pybind11::list py_list){
     velocity.x = pybind11::cast<double>(py_list[0]);
     velocity.y = pybind11::cast<double>(py_list[1]);
     velocity.tau = pybind11::cast<double>(py_list[2]);
+    shape_info_var = p_x_y.get(properties.grid_size);
 
+    if (properties.steady_state == false){
+        return step_single_point();
+    }else{
+        return step_bilinear();
+    }
+
+}
+
+
+std::vector<double> FullFrictionModel::step_cpp(utils::vec vel){
+    velocity = vel;
     shape_info_var = p_x_y.get(properties.grid_size);
 
     if (properties.steady_state == false){
@@ -64,15 +120,68 @@ std::vector<double> FullFrictionModel::step_single_point(){
     update_lugre();
     std::vector<double> force_vec;
     force_vec = approximate_integral();
-    std::vector<double> force_vec_cop;
     force_vec_cop = move_force_to_cop(force_vec);
     return force_vec;
 }
 
 
 std::vector<double> FullFrictionModel::step_bilinear(){
-    std::vector<double> force_vec = {2.0, 0.0, 1.2};
-    return force_vec;
+    std::vector<double> force_at_center(3);
+
+    if(velocity.tau == 0){
+        force_at_center = step_single_point();
+    }else{
+        int nx = properties.grid_shape[0];
+        int ny = properties.grid_shape[0];
+        double x0 = nx* properties.grid_size/2;
+        double y0 = ny* properties.grid_size/2;
+        double cor_x = -velocity.y/velocity.tau;
+        double cor_y = velocity.x/velocity.tau;
+
+        double ix_ = nx*(cor_x + x0)/(2*std::abs(x0));
+        int ix = int(ix_);
+        double dx = ix_ - ix;
+
+        double iy_ = ny*(cor_y + y0)/(2*std::abs(y0));
+        int iy = int(iy_);
+        double dy = iy_ - iy;
+        
+
+        if (ix >= 0 && ix < nx && iy >= 0 && iy < ny){
+            std::vector<int> ox = {0, 1, 0, 1};
+            std::vector<int> oy = {0, 0, 1, 1};
+            std::vector<std::vector<double>> f(4, std::vector<double>(3, 0.0));
+            std::vector<double> cor(2);
+            utils::vec velocity_;
+            utils::vec velocity_cop;
+            velocity_cop.x = 0; velocity_cop.y = 0; velocity_cop.tau = velocity.tau;
+            for (int i = 0; i < 4; i++){
+                cor[0] = ((ix + ox[i])/nx) * (2*std::abs(x0)) - x0;
+                cor[1] = ((iy + oy[i]) / ny) * (2 * std::abs(y0)) - y0;
+                velocity_ = utils::vel_to_point(utils::negate_vector(cor), velocity_cop);
+                update_velocity_grid(velocity_);
+                update_lugre();
+                f[i] = approximate_integral();
+            }
+
+            double s1= (1 - dx) * (1 - dy);
+            double s2 = dx * (1 - dy);
+            double s3 = dy * (1 - dx);
+            double s4 = dx * dy;
+
+            force_at_center[0] =  s1*f[0][0] + s2*f[1][0] + s3*f[2][0] + s4*f[3][0];
+            force_at_center[1] =  s1*f[0][1] + s2*f[1][1] + s3*f[2][1] + s4*f[3][1];
+            force_at_center[2] =  s1*f[0][2] + s2*f[1][2] + s3*f[2][2] + s4*f[3][2];
+
+        }else{
+            force_at_center = step_single_point();
+
+        }
+    }
+
+
+    force_vec_cop = move_force_to_cop(force_at_center);
+    return force_at_center;
 }
 
 
@@ -146,8 +255,8 @@ void FullFrictionModel::update_lugre(){
                 // TODO fix!
                 delta_z[0] = (z_ss[0] - lugre.z[ix][iy][0]) / p.dt;
                 delta_z[1] = (z_ss[1] - lugre.z[ix][iy][1]) / p.dt;
-                dz[0] = std::min(abs(dz[0]), abs(delta_z[0]))*(dz[0] > 0) - (dz[0] < 0);
-                dz[1] = std::min(abs(dz[1]), abs(delta_z[1]))*(dz[1] > 0) - (dz[1] < 0);
+                dz[0] = std::min(abs(dz[0]), abs(delta_z[0]))*((dz[0] > 0) - (dz[0] < 0));
+                dz[1] = std::min(abs(dz[1]), abs(delta_z[1]))*((dz[1] > 0) - (dz[1] < 0));
             }
 
             lugre.z[ix][iy][0] += dz[0] * p.dt;
@@ -190,6 +299,18 @@ std::vector<double> FullFrictionModel::approximate_integral(){
 }
 
 std::vector<double> FullFrictionModel::move_force_to_cop(std::vector<double> force_at_center){
+    std::vector<double> f_t(3, 0.0);
+    std::vector<double> cop3(3, 0.0);
+    std::vector<double> m;
+    std::vector<double> force_at_cop(3);
+
+    f_t[0] = force_at_center[0]; f_t[1] = force_at_center[1];
+    cop3[0] = shape_info_var.cop[0]; cop3[1] = shape_info_var.cop[1];
+    m = utils::crossProduct(cop3, f_t);
+    force_at_cop[0] = force_at_center[0];
+    force_at_cop[1] = force_at_center[1];
+    force_at_cop[2] = force_at_center[2] - m[2];
+     
     return force_at_center;
 }
 
