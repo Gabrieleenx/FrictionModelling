@@ -391,8 +391,8 @@ class ReducedFrictionModel(FrictionBase):
 
     def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
         ls = self.limit_surface.get_bilinear_interpolation(vel_cop, self.gamma)
-        ls_ = ls * np.array([0.21, 0.21, 0.0008372589830271525])
         new_vel = self.limit_surface.calc_new_vel(vel_cop, self.gamma)
+
         new_vel_ = np.array([new_vel['x'], new_vel['y'], self.gamma*new_vel['tau']])
         v_norm_new = np.linalg.norm(new_vel_)
         beta = np.zeros(3)

@@ -71,6 +71,13 @@ utils::shape_info utils::P_x_y::get(double size_){
     return shape_info_var;
 }
 
+utils::shape_info utils::P_x_y::get_red(double size_){
+    shape_info_var.cop = shape_info_var.cop_norm;
+    utils::multiply(shape_info_var.cop, size_/grid_size);
+    return shape_info_var;
+}
+
+
 double utils::shape_function(std::string shape_name, int ix, int iy, std::vector<int> grid_shape){
     double preasure = 0;
     if (shape_name == "Square"){

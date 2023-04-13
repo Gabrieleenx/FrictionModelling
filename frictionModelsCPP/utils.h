@@ -82,6 +82,7 @@ namespace utils {
             void set_fn(double fn);
             std::string get_shape();
             shape_info get(double size_);
+            shape_info get_red(double size_);
     };
 
 

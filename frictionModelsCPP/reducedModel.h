@@ -13,9 +13,12 @@ class PreCompute{
     private:
         int nr_segments;
         double gamma;
+        double tau_visc;
         std::vector<double> cop;
+        std::vector<double> pos;
         std::vector<utils::four_points> ls_list;
         FullFrictionModel full_model;
+        FullFrictionModel full_model_viscus;
         utils::closest_sample get_closest_samples(utils::vec vel, double gamma_); 
         void pre_compute_pos();
         utils::if_calc get_if_calc(int r, int i, int j);
@@ -23,6 +26,7 @@ class PreCompute{
         int calc_idx(int r, int i);
         void calc_4_points(int r, int i, double f_t_max, double f_tau_max);
         std::vector<double> normalize_force(std::vector<double> f, double f_t_max, double f_tau_max);
+        void update_viscus_scale();
 
     public:
         PreCompute(){};
@@ -37,8 +41,7 @@ class PreCompute{
 
         double calc_gamma();
 
-        std::vector<double> update_viscus_scale();
-
+        std::vector<double> get_viscus_scale(double gamma_);
 
 };
 
@@ -47,7 +50,8 @@ class ReducedFrictionModel{
     private:
         double gamma;
         std::vector<double> viscus_scale;
-        
+        std::vector<double> force_vec_cop;
+
         utils::vec velocity;
         utils::P_x_y p_x_y;
         utils::shape_info shape_info_var;
@@ -55,18 +59,12 @@ class ReducedFrictionModel{
         utils::lugre_red lugre;
 
         PreCompute pre_compute;
-        
-        
 
+        void update_lugre(utils::vec vel_cop);
 
+        std::vector<double> move_force_to_center(std::vector<double> force_at_cop);
 
-        //std::vector<double> position_vec_x; // [shape x]
-        //std::vector<double> position_vec_y; // [shape x]
-
-        //void update_velocity_grid(utils::vec vel);
-        //void update_lugre();
-        //std::vector<double> approximate_integral();
-        //std::vector<double> move_force_to_cop(std::vector<double> force_at_center);
+        std::vector<double> calc_beta(utils::vec vel_cop, std::vector<double>& vel_cop_tau, double& v_norm);
 
     public:
         ReducedFrictionModel(){};

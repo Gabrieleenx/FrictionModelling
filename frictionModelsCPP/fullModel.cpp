@@ -132,17 +132,17 @@ std::vector<double> FullFrictionModel::step_bilinear(){
         force_at_center = step_single_point();
     }else{
         int nx = properties.grid_shape[0];
-        int ny = properties.grid_shape[0];
+        int ny = properties.grid_shape[1];
         double x0 = nx* properties.grid_size/2;
         double y0 = ny* properties.grid_size/2;
         double cor_x = -velocity.y/velocity.tau;
         double cor_y = velocity.x/velocity.tau;
 
-        double ix_ = nx*(cor_x + x0)/(2*std::abs(x0));
+        double ix_ = nx*(cor_x + x0)/(2*x0);
         int ix = int(ix_);
         double dx = ix_ - ix;
 
-        double iy_ = ny*(cor_y + y0)/(2*std::abs(y0));
+        double iy_ = ny*(cor_y + y0)/(2*y0);
         int iy = int(iy_);
         double dy = iy_ - iy;
         
@@ -154,10 +154,10 @@ std::vector<double> FullFrictionModel::step_bilinear(){
             std::vector<double> cor(2);
             utils::vec velocity_;
             utils::vec velocity_cop;
-            velocity_cop.x = 0; velocity_cop.y = 0; velocity_cop.tau = velocity.tau;
+            velocity_cop.x = 0.0; velocity_cop.y = 0.0; velocity_cop.tau = velocity.tau;
             for (int i = 0; i < 4; i++){
-                cor[0] = ((ix + ox[i])/nx) * (2*std::abs(x0)) - x0;
-                cor[1] = ((iy + oy[i]) / ny) * (2 * std::abs(y0)) - y0;
+                cor[0] = (double(ix + ox[i])/nx) * (2*std::abs(x0)) - x0;
+                cor[1] = (double(iy + oy[i]) / ny) * (2 * std::abs(y0)) - y0;
                 velocity_ = utils::vel_to_point(utils::negate_vector(cor), velocity_cop);
                 update_velocity_grid(velocity_);
                 update_lugre();
@@ -252,7 +252,6 @@ void FullFrictionModel::update_lugre(){
             }
 
             if (p.stability == true){
-                // TODO fix!
                 delta_z[0] = (z_ss[0] - lugre.z[ix][iy][0]) / p.dt;
                 delta_z[1] = (z_ss[1] - lugre.z[ix][iy][1]) / p.dt;
                 dz[0] = std::min(abs(dz[0]), abs(delta_z[0]))*((dz[0] > 0) - (dz[0] < 0));

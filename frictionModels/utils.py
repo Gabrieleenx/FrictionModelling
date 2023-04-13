@@ -51,6 +51,7 @@ class CustomHashList3D(object):
             dr = 1
 
         idx = self.calc_idx(r1, i1)
+
         f = self.list[idx]
 
         return f[0], f[1], f[2], f[3], dr, di
@@ -120,6 +121,7 @@ class CustomHashList3D(object):
         :return: {'x': fx, 'y': fy, 'tau': ftau}
         """
         pos = self.pos*gamma
+
         new_vel = vel_to_cop(pos, vel_cop)
         p_xy_n = np.linalg.norm([pos[0], pos[1]])
 
@@ -127,7 +129,7 @@ class CustomHashList3D(object):
         if p_xy_n != 0:
             p_x_n = abs(pos[0])/p_xy_n
             p_y_n = abs(pos[1])/p_xy_n
-            nn = np.linalg.norm([vel_cop['x']*p_x_n, vel_cop['y']*p_y_n])/self.gamma
+            nn = np.linalg.norm([vel_cop['x']*p_x_n, vel_cop['y']*p_y_n])/gamma # should this be gamma instead of self.gamma (was self.gamma before)?
             r = (2*np.arctan2(abs(vel_cop['tau']), nn))/(np.pi)
 
         new_vel_x = r*new_vel['x'] + (1-r)*vel_cop['x']

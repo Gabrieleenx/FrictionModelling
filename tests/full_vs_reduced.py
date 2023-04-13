@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 import surfaces.surfaces as surf
-from velocity_profiles import *
+from tests.velocity_profiles import *
 from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 
@@ -59,10 +59,9 @@ data_full = np.zeros((4, n_steps))  # t, fx, fy, f_tau
 data_reduced = np.zeros((4, n_steps))  # t, fx, fy, f_tau
 
 # running simulation
-
 print('Full model')
 for i in tqdm(range(n_steps)):
-    t = i * properties['dt']
+    t = (i) * properties['dt']
     vel = vel_gen_5(t)
     data_vel[0, i] = t
     data_vel[1, i] = vel['x']
