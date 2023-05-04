@@ -15,13 +15,11 @@ class PObject(object):
         self.fn = fn
 
     def get(self, size):
-        # TODO: return the shape and size.
         p = self.pressure_grid_norm*self.fn
         cop = self.cop*size/self.size
         return p, cop, self.fn
 
     def set_pressure_shape(self, size, shape_, shape_fun, fn=1):
-        # TODO: the actual shape
         area = size**2
         pressure_grid = shape_fun(shape_) * area
         fn_ = np.sum(pressure_grid)

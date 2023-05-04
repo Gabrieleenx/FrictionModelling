@@ -193,7 +193,7 @@ properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               's1': 2e1,
               's2': 0.4,
               'dt': 5e-4,
-              'stability': True,
+              'stability': False,
               'elasto_plastic': True,
               'z_ba_ratio': 0.9,
               'steady_state': False}

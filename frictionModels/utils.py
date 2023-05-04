@@ -35,9 +35,9 @@ class CustomHashList3D(object):
 
 
         v_xy_norm = np.linalg.norm([vel['y'], vel['x']])
-        v_xy_norm = gamma*v_xy_norm/(self.gamma**2)  #  Compensate for change in gamma and the velocity relation
-        # for pre-computation
-        a2 = np.arctan2(v_xy_norm, abs(vel['tau'])) * 2 * n/np.pi
+
+        v_xy_norm = v_xy_norm / self.gamma  # Compensate for change in gamma and the velocity relation
+        a2 = np.arctan2(v_xy_norm, gamma * abs(vel['tau'])/self.gamma) * 2 * n/np.pi
 
         r1 = int(a1)
         i1 = int(a2)
@@ -320,9 +320,9 @@ def update_radius(full_model):
     mu = full_model.p['mu_c']
     vel_vec_ = {'x': 0, 'y': 0, 'tau': 1}
     vel_vec = vel_to_cop(-cop, vel_vec_)
-
     f = full_model.step(vel_vec)
     f = full_model.force_at_cop
+
     if fn != 0:
         gamma = abs(f['tau'])/(mu*fn)
     else:

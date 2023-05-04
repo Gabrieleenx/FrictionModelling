@@ -2,6 +2,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <iostream>
+#include <algorithm>
 
 void utils::P_x_y::init(std::string shape_name_, double grid_size_, std::vector<int> grid_shape_, double fn){
     grid_size = grid_size_;
@@ -26,6 +27,7 @@ void utils::P_x_y::update_shape_info(){
             new_grid[i][j] = area * utils::shape_function(shape_name, i, j, grid_shape);
             fn_new += new_grid[i][j];
         }
+
     }
 
     utils::multiply(new_grid, 1/fn_new);
@@ -79,11 +81,66 @@ utils::shape_info utils::P_x_y::get_red(double size_){
 
 
 double utils::shape_function(std::string shape_name, int ix, int iy, std::vector<int> grid_shape){
-    double preasure = 0;
+    double pressure = 0;
     if (shape_name == "Square"){
-        preasure = 0.01;
+        pressure = 1.0;
     }
-    return preasure;
+
+    if (shape_name == "Circle"){
+        std::vector<double> center = {0, 0};
+        center[0] = int(grid_shape[0]/2.0);
+        center[1] = int(grid_shape[1]/2.0);
+        std::vector<double> rad_ = {center[0], center[1], grid_shape[0]-center[0], grid_shape[1]-center[1]};
+        double rad = *std::min_element(rad_.begin(), rad_.end());
+        double dist_from_center = std::sqrt(pow((ix - center[0]),2) + pow((iy - center[1]),2));
+        if (dist_from_center <= rad){
+            pressure = 1;
+        }else{
+            pressure = 0;
+        }
+    }
+
+    if (shape_name == "LineGrad"){
+        if (grid_shape[0]/2.0 == int(grid_shape[0]/2.0)){
+            if (ix == int(grid_shape[0]/2.0) || ix == int(grid_shape[0]/2.0) -1){
+                pressure = double(iy)/grid_shape[1];
+            }else
+            {
+                pressure = 0;
+            }
+            
+        }else{
+            if (ix == int(grid_shape[0]/2.0)){
+                pressure = double(iy)/grid_shape[1];
+            }else
+            {
+                pressure = 0;
+            }
+        }
+    }
+
+
+    if (shape_name == "Line"){
+        if (grid_shape[0]/2.0 == int(grid_shape[0]/2.0)){
+            if (ix == int(grid_shape[0]/2.0) || ix == int(grid_shape[0]/2.0) -1){
+                pressure = 1.0;
+            }else
+            {
+                pressure = 0.0;
+            }
+            
+        }else{
+            if (ix == int(grid_shape[0]/2.0)){
+                pressure = 1.0;
+            }else
+            {
+                pressure = 0.0;
+            }
+        }
+    }
+
+
+    return pressure;
 }
 
 

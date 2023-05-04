@@ -110,3 +110,71 @@ def vel_gen_6(t):
     vel = {'x': vx, 'y': vy, 'tau': tau}
     return vel
 
+
+def vel_num_cells(t):
+    cor_max = 0.015
+
+    t1 = 0.6
+    t2 = 0.8
+    t3 = 1.4
+    t4 = 1.6
+    t5 = 2.2
+    t6 = 2.4
+    t7 = 3.0
+    t8 = 3.2
+    t9 = 3.8
+    t10 = 4.0
+    t11 = 4.6
+
+    if t < t1:
+        vx = 0
+        vy = 0
+        tau = t/t1
+    elif t < t2:
+        vx = 0
+        vy = 0
+        tau = 1
+    elif t < t3:
+        vx = cor_max*(t-t2)/(t3-t2)
+        vy = 0
+        tau = 1
+    elif t < t4:
+        vx = cor_max
+        vy = 0
+        tau = 1
+    elif t < t5:
+        vx = cor_max * (t5 - t)/ (t5 - t4)
+        vy = 0
+        tau = 1
+    elif t < t6:
+        vx = 0
+        vy = 0
+        tau = 1
+    elif t < t7:
+        vx = 0
+        vy = cor_max*(t-t6)/(t7-t6)
+        tau = 1
+    elif t < t8:
+        vx = 0
+        vy = cor_max
+        tau = 1
+    elif t < t9:
+        vx = 0
+        vy = cor_max
+        tau = (t9 - t)/(t9-t8)
+    elif t < t10:
+        vx = 0
+        vy = cor_max
+        tau = 0
+
+    elif t < t11:
+        vx = 0
+        vy = cor_max * (t11 - t) / (t11 - t10)
+        tau = 0
+    else:
+        vx = 0
+        vy = 0
+        tau = 0
+
+    vel = {'x': vx, 'y': vy, 'tau': tau}
+    return vel
