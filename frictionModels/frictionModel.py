@@ -291,7 +291,7 @@ class FullFrictionModel(FrictionBase):
 class ReducedFrictionModel(FrictionBase):
     def __init__(self, properties: Dict[str, any], nr_ls_segments: int = 20, ls_active: bool = True):
         super().__init__(properties)
-        self.gamma = 0.00764477848712988
+        self.ra = 0.00764477848712988
         self.limit_surface = CustomHashList3D(nr_ls_segments)
         self.viscous_scale = np.ones(3)
         self.p_x_y = None
@@ -308,13 +308,13 @@ class ReducedFrictionModel(FrictionBase):
         :param vel_vec:
         :return:
         """
-        print('grid_size', self.p['grid_size'])
         p, self.cop, self.fn = self.p_x_y.get(self.p['grid_size'])
+
         vel_cop = vel_to_cop(self.cop, vel_vec)
 
         self.update_lugre(vel_cop)
 
-        self.force_at_cop = {'x': self.lugre['f'][0], 'y': self.lugre['f'][1], 'tau': self.lugre['f'][2]}
+        self.force_at_cop = {'x': self.lugre['f'][0 ,0], 'y': self.lugre['f'][1,0], 'tau': self.lugre['f'][2,0]}
 
         force = self.move_force_to_center(self.force_at_cop)
 
@@ -330,8 +330,8 @@ class ReducedFrictionModel(FrictionBase):
         return FullFrictionModel(properties)
 
     def initialize_lugre(self):
-        z = np.zeros(3)  # bristles
-        f = np.zeros(3)  # tangential force at each grid cell
+        z = np.zeros((3, 1))  # bristles
+        f = np.zeros((3, 1))  # tangential force at each grid cell
         return {'z': z, 'f': f}
 
     def update_p_x_y(self, p_x_y_object):
@@ -340,10 +340,9 @@ class ReducedFrictionModel(FrictionBase):
         self.p['grid_size'] = self.p_x_y.size
 
         # gamma radius
-        self.gamma = update_radius(self.full_model)
-        print('gamma', self.gamma)
+        self.ra = update_radius(self.full_model)
         # viscus scale
-        self.viscous_scale = update_viscus_scale(self.full_model, self.gamma, self.cop)
+        self.viscous_scale = update_viscus_scale(self.full_model, self.ra, self.cop)
         #self.update_cop_and_force_grid(p_x_y)
 
     def update_pre_compute(self):
@@ -351,68 +350,83 @@ class ReducedFrictionModel(FrictionBase):
         #self.full_model.update_p_x_y(self.p_x_y)
         self.limit_surface.initialize(self.full_model)
         # gamma radius
-        #self.gamma = update_radius(self.full_model)
+        #self.ra = update_radius(self.full_model)
         # viscus scale
-        #self.viscous_scale = update_viscus_scale(self.full_model, self.gamma, self.cop)
+        #self.viscous_scale = update_viscus_scale(self.full_model, self.ra, self.cop)
 
     def update_lugre(self, vel_cop):
-        vel_cop_tau = np.array([vel_cop['x'], vel_cop['y'], vel_cop['tau']*self.gamma])
-        v_norm = np.linalg.norm(vel_cop_tau)
+        vel_cop_list = np.array([[vel_cop['x']], [vel_cop['y']], [vel_cop['tau']]])
 
         if self.ls_active:
-            beta, vel_cop_tau, v_norm = self.calc_beta(vel_cop, vel_cop_tau, v_norm)
+            S_A, inv_A = self.calc_beta(vel_cop)
         else:
-            beta = np.ones(3)
+            inv_A = np.eye(3)
+            inv_A[2, 2] = self.ra**2
+            S_A = np.eye(3)
+        v_norm = np.sqrt(vel_cop_list.T.dot(inv_A).dot(vel_cop_list))
+        inv_A_v = inv_A.dot(vel_cop_list)
 
         g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * np.exp(- (v_norm / self.p['v_s']) ** self.p['alpha'])
 
         if v_norm != 0:
-            z_ss = (beta*vel_cop_tau*g) / (self.p['s0'] * v_norm)
+            z_ss = (S_A.dot(inv_A_v)*g) / (self.p['s0'] * v_norm)
 
         else:
-            z_ss = np.zeros(3)
-
+            z_ss = np.zeros((3, 1))
         if self.p['steady_state']:
-            self.lugre['f'] = -(self.p['s0'] * z_ss + self.viscous_scale * self.p['s2'] * vel_cop_tau) * self.fn
-            self.lugre['f'][2] = self.lugre['f'][2] * self.gamma
+            self.lugre['f'] = -(self.p['s0'] * z_ss + self.viscous_scale * self.p['s2'] * inv_A_v) * self.fn
+
             return
 
 
         if self.p['elasto_plastic']:
-            alpha = elasto_plastic_alpha(self.lugre['z'],
-                                         z_ss,
+            R_a = np.diag([1, 1, 1/self.ra])
+            vel_cop_tau = R_a.dot(inv_A).dot(vel_cop_list).flatten()
+            alpha = elasto_plastic_alpha(R_a.dot(self.lugre['z']).flatten(),
+                                         R_a.dot(z_ss).flatten(),
                                          self.p['z_ba_ratio'],
                                          vel_cop_tau)
+
         else:
             alpha = 1
-        dz = beta * vel_cop_tau - alpha * self.lugre['z'] * (self.p['s0'] * (v_norm / g))
 
+        dz = S_A.dot(inv_A_v) - alpha * self.lugre['z'] * (self.p['s0'] * (v_norm / g))
         if self.p['stability']:
-            delta_z = (z_ss - self.lugre['z']) / self.p['dt']
+            z = self.lugre['z']
+            delta_z = (z_ss - z) / self.p['dt']
 
             dz = np.min([abs(dz), abs(delta_z)], axis=0) * np.sign(dz)
-
         self.lugre['z'] += dz * self.p['dt']
 
-        self.lugre['f'] = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
-                            self.viscous_scale * self.p['s2'] * vel_cop_tau) * self.fn
-        self.lugre['f'][2] = self.lugre['f'][2]*self.gamma
+        f = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
+                            self.viscous_scale * self.p['s2'] * inv_A_v) * self.fn
+        self.lugre['f'] = f
         self.lugre['dz'] = dz
 
-    def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
-        ls = self.limit_surface.get_bilinear_interpolation(vel_cop, self.gamma)
-        new_vel = self.limit_surface.calc_new_vel(vel_cop, self.gamma)
+    def calc_beta(self, vel_cop):
+        vel_cop_list = np.array([[vel_cop['x']], [vel_cop['y']], [vel_cop['tau']]])
+        ls = self.limit_surface.get_bilinear_interpolation(vel_cop, self.ra)
 
-        new_vel_ = np.array([new_vel['x'], new_vel['y'], self.gamma*new_vel['tau']])
-        v_norm_new = np.linalg.norm(new_vel_)
-        beta = np.zeros(3)
-        for i in range(3):
-            if new_vel_[i] != 0:
-                beta[i] = abs(ls[i]) * v_norm_new/ abs(new_vel_[i])
-            else:
-                beta[i] = 1
+        inv_A = np.eye(3)
+        inv_A[2, 2] = self.ra ** 2
+        new_vel = self.limit_surface.calc_new_vel(vel_cop, self.ra)
 
-        return beta, new_vel_, v_norm_new
+        if vel_cop['tau'] != 0:
+            sx = (new_vel['x'] - vel_cop['x'])/vel_cop['tau']
+            sy = (new_vel['y'] - vel_cop['y'])/vel_cop['tau']
+        else:
+            sx = 1
+            sy = 1
+        inv_A[0, 2] = sx
+        inv_A[1, 2] = sy
+
+        v_a = abs(inv_A.dot(vel_cop_list))
+        v_a[v_a == 0] = 1
+        V_A = np.diag(v_a.flatten())
+        LS = np.diag(ls)
+        LS[2,2] = self.ra * LS[2,2]
+        S_A = abs(LS).dot(np.linalg.pinv(V_A)) * np.sqrt(vel_cop_list.T.dot(inv_A).dot(vel_cop_list))
+        return S_A, inv_A
 
 
     def steady_state(self, vel_cop, force_at_cop):

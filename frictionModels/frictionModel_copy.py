@@ -308,7 +308,6 @@ class ReducedFrictionModel(FrictionBase):
         :param vel_vec:
         :return:
         """
-        print('grid_size', self.p['grid_size'])
         p, self.cop, self.fn = self.p_x_y.get(self.p['grid_size'])
         vel_cop = vel_to_cop(self.cop, vel_vec)
 
@@ -341,7 +340,6 @@ class ReducedFrictionModel(FrictionBase):
 
         # gamma radius
         self.gamma = update_radius(self.full_model)
-        print('gamma', self.gamma)
         # viscus scale
         self.viscous_scale = update_viscus_scale(self.full_model, self.gamma, self.cop)
         #self.update_cop_and_force_grid(p_x_y)
@@ -385,24 +383,24 @@ class ReducedFrictionModel(FrictionBase):
                                          vel_cop_tau)
         else:
             alpha = 1
-        dz = beta * vel_cop_tau - alpha * self.lugre['z'] * (self.p['s0'] * (v_norm / g))
+        bb = beta * vel_cop_tau
 
+        aa = alpha * self.lugre['z'] * (self.p['s0'] * (v_norm / g))
+
+        dz = beta * vel_cop_tau - alpha * self.lugre['z'] * (self.p['s0'] * (v_norm / g))
         if self.p['stability']:
             delta_z = (z_ss - self.lugre['z']) / self.p['dt']
 
             dz = np.min([abs(dz), abs(delta_z)], axis=0) * np.sign(dz)
-
         self.lugre['z'] += dz * self.p['dt']
-
         self.lugre['f'] = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
-                            self.viscous_scale * self.p['s2'] * vel_cop_tau) * self.fn
+                            self.viscous_scale.flatten() * self.p['s2'] * vel_cop_tau) * self.fn
         self.lugre['f'][2] = self.lugre['f'][2]*self.gamma
         self.lugre['dz'] = dz
 
     def calc_beta(self, vel_cop, vel_cop_tau, v_norm):
         ls = self.limit_surface.get_bilinear_interpolation(vel_cop, self.gamma)
         new_vel = self.limit_surface.calc_new_vel(vel_cop, self.gamma)
-
         new_vel_ = np.array([new_vel['x'], new_vel['y'], self.gamma*new_vel['tau']])
         v_norm_new = np.linalg.norm(new_vel_)
         beta = np.zeros(3)

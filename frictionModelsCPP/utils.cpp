@@ -42,7 +42,7 @@ void utils::P_x_y::update_shape_info(){
     for (int i = 0; i < new_grid.size(); i++) {
         for (int j = 0; j < new_grid[i].size(); j++) {
             x_pos = (i + 0.5 - n_row/2.0)*grid_size;
-            x_pos = (j + 0.5 - n_col/2.0)*grid_size;
+            y_pos = (j + 0.5 - n_col/2.0)*grid_size;
             cop_x += x_pos * new_grid[i][j];
             cop_y += y_pos * new_grid[i][j];
         }

@@ -84,8 +84,8 @@ void PreCompute::pre_compute_pos(){
     }
     
     std::vector<double> pos_(2);
-    pos_[0] = - std::sin(rx);
-    pos_[1] = std::sin(ry);
+    pos_[0] = - std::sin(ry);
+    pos_[1] = std::sin(rx);
     pos = pos_;
 }
 
@@ -275,10 +275,13 @@ void PreCompute::pre_comp_ls(int nr_segments_){
 
     cop = full_model.get_cop();
 
-    f_t = full_model.step_cpp({1.0, 0.0, 0.0});
+    f_t = full_model.step_cpp(utils::vel_to_point(utils::negate_vector(cop), {1.0, 0.0, 0.0}));
 
+    f_t = full_model.get_force_at_cop();
     f_t_max = abs(f_t[0]);
-    f_tau = full_model.step_cpp({0.0, 0.0, 1.0});
+    f_tau = full_model.step_cpp(utils::vel_to_point(utils::negate_vector(cop), {0.0, 0.0, 1.0}));
+
+    f_tau =  full_model.get_force_at_cop();
     f_tau_max = abs(f_tau[2]);
 
     gamma = calc_gamma();
@@ -307,12 +310,12 @@ double PreCompute::calc_gamma(){
 
     p = full_model.get_properties();
 
-    cop_ = full_model.get_cop();
-
+    cop_ = full_model.get_cop(); 
     vel.x = 0.0; vel.y = 0.0; vel.tau = 1.0;
     vel_cop = utils::vel_to_point(utils::negate_vector(cop_), vel);
     f = full_model.step_cpp(vel_cop);
     f = full_model.get_force_at_cop();
+
     gamma = abs(f[2])/(p.mu_c);
 
     return gamma;
@@ -372,8 +375,9 @@ std::vector<double> ReducedFrictionModel::step(pybind11::list py_list){
     velocity.tau = pybind11::cast<double>(py_list[2]);
     
     shape_info_var = p_x_y.get_red(properties.grid_size);
-    utils::vec vel_cop = utils::vel_to_point(shape_info_var.cop, velocity);
     
+    utils::vec vel_cop = utils::vel_to_point(shape_info_var.cop, velocity);
+
     update_lugre(vel_cop);
 
     force_vec_cop = lugre.f;
@@ -390,19 +394,18 @@ void ReducedFrictionModel::update_lugre(utils::vec vel_cop){
     utils::properties p = properties;
     std::vector<double> vel_cop_tau = {vel_cop.x, vel_cop.y, vel_cop.tau*gamma};
     double v_norm = std::sqrt(pow(vel_cop_tau[0], 2) + pow(vel_cop_tau[1], 2) + pow(vel_cop_tau[2], 2));
-    double g = p.mu_c + (p.mu_s - p.mu_c) * exp(- pow((v_norm/p.v_s), p.alpha));
     double alpha;
     std::vector<double> beta;
     std::vector<double> z_ss = {0.0, 0.0, 0.0}; // [x, y, tau]
     std::vector<double> dz = {0.0, 0.0, 0.0}; // [x, y, tau]
     std::vector<double> delta_z = {0.0, 0.0, 0.0}; // [x, y, tau]
-
     beta = calc_beta(vel_cop, vel_cop_tau, v_norm);
-
+    double g = p.mu_c + (p.mu_s - p.mu_c) * exp(- pow((v_norm/p.v_s), p.alpha));
     if (v_norm != 0){
         z_ss[0] = beta[0] * vel_cop_tau[0]*g/(p.s0*v_norm);
         z_ss[1] = beta[1] * vel_cop_tau[1]*g/(p.s0*v_norm);
         z_ss[2] = beta[2] * vel_cop_tau[2]*g/(p.s0*v_norm);
+       
     }else{
         z_ss[0] = 0.0;
         z_ss[1] = 0.0;
@@ -468,10 +471,9 @@ std::vector<double> ReducedFrictionModel::calc_beta(utils::vec vel_cop, std::vec
     std::vector<double> beta(3, 0.0);
     std::vector<double> ls;
     utils::vec new_vel;
+
     ls = pre_compute.get_bilinear_interpolation(vel_cop, gamma);
-
     new_vel = pre_compute.calc_new_vel(vel_cop, gamma);
-
     vel_cop_tau[0] = new_vel.x;
     vel_cop_tau[1] = new_vel.y;
     vel_cop_tau[2] = new_vel.tau * gamma;

@@ -470,8 +470,8 @@ def update_ellipse(shape,
             data3d[2, i+j*num] = f['tau']
             data3d[0, i + j * num + 4*num*num] = -f['x']
             data3d[1, i + j * num + 4*num*num] = -f['y']
-            data3d[2, i + j * num  +4*num*num] = -f['tau']
-    max_save3d = np.max(data3d, axis=1)
+            data3d[2, i + j * num +4*num*num] = -f['tau']
+    max_save3d = np.max(abs(data3d), axis=1)
     data3d = data3d.T / max_save3d
     data3d = data3d.T
     fig_2 = go.Figure()

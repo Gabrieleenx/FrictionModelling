@@ -23,7 +23,7 @@ class CustomHashList3D(object):
         n = self.num_segments
         a1_ = np.arctan2(vel['y'], vel['x'])
 
-        if  vel['tau'] < 0:
+        if vel['tau'] < 0:
             if a1_ < np.pi:
                 a1_ += np.pi
             else:
@@ -31,6 +31,7 @@ class CustomHashList3D(object):
 
         if a1_ < 0:
             a1_ = 2*np.pi + a1_
+
         a1 = a1_ * 2*n/np.pi
 
 
@@ -123,6 +124,7 @@ class CustomHashList3D(object):
         pos = self.pos*gamma
 
         new_vel = vel_to_cop(pos, vel_cop)
+
         p_xy_n = np.linalg.norm([pos[0], pos[1]])
 
         r = 0
@@ -250,9 +252,9 @@ class CustomHashList3D(object):
         :return:
         """
         self.cop = friction_model.cop
-        _ = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 1, 'y': 0, 'tau': 0}))
+        f1_ = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 1, 'y': 0, 'tau': 0}))
         f1 = friction_model.force_at_cop
-        _ = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 0, 'y': 0, 'tau': 1}))
+        f2_ = friction_model.step(vel_vec=vel_to_cop(-self.cop, {'x': 0, 'y': 0, 'tau': 1}))
         f2 = friction_model.force_at_cop
 
         f_t_max = abs(f1['x'])
@@ -297,7 +299,6 @@ def elasto_plastic_alpha(z, z_ss, z_ba_r, v):
         alpha = 0.5 * np.sin(np.pi*((z_norm - (z_max + z_ba) / 2) / (z_max - z_ba))) + 0.5
     else:
         alpha = 1
-
     v_norm = np.linalg.norm(v)
     if v_norm != 0 and z_norm != 0:
         v_unit = v / v_norm
@@ -322,12 +323,10 @@ def update_radius(full_model):
     vel_vec = vel_to_cop(-cop, vel_vec_)
     f = full_model.step(vel_vec)
     f = full_model.force_at_cop
-
     if fn != 0:
         gamma = abs(f['tau'])/(mu*fn)
     else:
         gamma = 0
-
     return gamma
 
 
@@ -352,7 +351,7 @@ def update_viscus_scale(full_model, gamma, cop):
 
     # reset parameter back
     full_model.update_properties(mu_c=mu_c, mu_s=mu_s, s2=s2)
-    return np.array([1, 1, s])
+    return np.array([[1], [1], [s]])
 
 
 def vel_to_cop(cop, vel_vec):

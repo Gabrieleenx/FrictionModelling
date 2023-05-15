@@ -310,7 +310,7 @@ std::vector<double> FullFrictionModel::move_force_to_cop(std::vector<double> for
     force_at_cop[1] = force_at_center[1];
     force_at_cop[2] = force_at_center[2] - m[2];
      
-    return force_at_center;
+    return force_at_cop;
 }
 
 
