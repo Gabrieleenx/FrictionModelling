@@ -57,6 +57,7 @@ void utils::P_x_y::set_shape(std::string shape_name_){
 }
 
 void utils::P_x_y::set_fn(double fn){
+
     shape_info_var.fn = fn;
 }
 
@@ -66,17 +67,17 @@ std::string utils::P_x_y::get_shape(){
 
 utils::shape_info utils::P_x_y::get(double size_){
     shape_info_var.f_n_grid = shape_info_var.f_n_grid_norm;
-
     utils::multiply(shape_info_var.f_n_grid, shape_info_var.fn);
     shape_info_var.cop = shape_info_var.cop_norm;
     utils::multiply(shape_info_var.cop, size_/grid_size);
     return shape_info_var;
 }
 
-utils::shape_info utils::P_x_y::get_red(double size_){
-    shape_info_var.cop = shape_info_var.cop_norm;
-    utils::multiply(shape_info_var.cop, size_/grid_size);
-    return shape_info_var;
+utils::shape_info_red utils::P_x_y::get_red(double size_){
+    shape_info_var_red.cop = shape_info_var.cop_norm;
+    utils::multiply(shape_info_var_red.cop, size_/grid_size);
+    shape_info_var_red.fn = shape_info_var.fn;
+    return shape_info_var_red;
 }
 
 

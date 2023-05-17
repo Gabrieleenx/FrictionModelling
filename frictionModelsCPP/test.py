@@ -60,7 +60,7 @@ print(planar_lugre.step(vel))
 
 print("cpp red package")
 
-for i in tqdm(range(100)):
+for i in tqdm(range(1000000)):
     a = red_fic.step(vel_cpp)
 
 print(red_fic.step(vel_cpp))

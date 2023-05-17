@@ -352,11 +352,13 @@ void ReducedFrictionModel::init(pybind11::list py_list, std::string shape_name, 
     properties.stability = pybind11::cast<bool>(py_list[12]);
     properties.elasto_plastic = pybind11::cast<bool>(py_list[13]);
     properties.steady_state = pybind11::cast<bool>(py_list[14]);
+    double N_LS = pybind11::cast<int>(py_list[15]);
+
     // update p_x_y
     p_x_y.init(shape_name, properties.grid_size, properties.grid_shape, fn);
     // update pre-compute
     pre_compute.update_full_model(py_list, shape_name);
-    pre_compute.pre_comp_ls(20);
+    pre_compute.pre_comp_ls(N_LS);
     gamma = pre_compute.calc_gamma();
     viscus_scale = pre_compute.get_viscus_scale(gamma);
     std::vector<double> lugre_f(3, 0.0);
@@ -374,9 +376,9 @@ std::vector<double> ReducedFrictionModel::step(pybind11::list py_list){
     velocity.y = pybind11::cast<double>(py_list[1]);
     velocity.tau = pybind11::cast<double>(py_list[2]);
     
-    shape_info_var = p_x_y.get_red(properties.grid_size);
+    shape_info_var_red = p_x_y.get_red(properties.grid_size);
     
-    utils::vec vel_cop = utils::vel_to_point(shape_info_var.cop, velocity);
+    utils::vec vel_cop = utils::vel_to_point(shape_info_var_red.cop, velocity);
 
     update_lugre(vel_cop);
 
@@ -413,9 +415,9 @@ void ReducedFrictionModel::update_lugre(utils::vec vel_cop){
     }
 
     if (p.steady_state == true){
-        lugre.f[0] = -(p.s0 * z_ss[0] + viscus_scale[0] * p.s2*vel_cop_tau[0]) * shape_info_var.fn;
-        lugre.f[1] = -(p.s0 * z_ss[1] + viscus_scale[1] * p.s2*vel_cop_tau[1]) * shape_info_var.fn;
-        lugre.f[2] = -(p.s0 * z_ss[2] + viscus_scale[2] * p.s2*vel_cop_tau[2]) * shape_info_var.fn * gamma;
+        lugre.f[0] = -(p.s0 * z_ss[0] + viscus_scale[0] * p.s2*vel_cop_tau[0]) * shape_info_var_red.fn;
+        lugre.f[1] = -(p.s0 * z_ss[1] + viscus_scale[1] * p.s2*vel_cop_tau[1]) * shape_info_var_red.fn;
+        lugre.f[2] = -(p.s0 * z_ss[2] + viscus_scale[2] * p.s2*vel_cop_tau[2]) * shape_info_var_red.fn * gamma;
         return;
     }
 
@@ -443,9 +445,9 @@ void ReducedFrictionModel::update_lugre(utils::vec vel_cop){
     lugre.z[1] += dz[1] * p.dt;
     lugre.z[2] += dz[2] * p.dt;
 
-    lugre.f[0] = -(p.s0 * lugre.z[0] + p.s1 * dz[0] + viscus_scale[0]*p.s2*vel_cop_tau[0]) * shape_info_var.fn;
-    lugre.f[1] = -(p.s0 * lugre.z[1] + p.s1 * dz[1] + viscus_scale[1]*p.s2*vel_cop_tau[1]) * shape_info_var.fn;
-    lugre.f[2] = -(p.s0 * lugre.z[2] + p.s1 * dz[2] + viscus_scale[2]*p.s2*vel_cop_tau[2]) * shape_info_var.fn * gamma;
+    lugre.f[0] = -(p.s0 * lugre.z[0] + p.s1 * dz[0] + viscus_scale[0]*p.s2*vel_cop_tau[0]) * shape_info_var_red.fn;
+    lugre.f[1] = -(p.s0 * lugre.z[1] + p.s1 * dz[1] + viscus_scale[1]*p.s2*vel_cop_tau[1]) * shape_info_var_red.fn;
+    lugre.f[2] = -(p.s0 * lugre.z[2] + p.s1 * dz[2] + viscus_scale[2]*p.s2*vel_cop_tau[2]) * shape_info_var_red.fn * gamma;
 
 }   
 
@@ -457,7 +459,7 @@ std::vector<double> ReducedFrictionModel::move_force_to_center(std::vector<doubl
     std::vector<double> force_at_center(3);
 
     f_t[0] = force_at_cop[0]; f_t[1] = force_at_cop[1];
-    cop3[0] = shape_info_var.cop[0]; cop3[1] = shape_info_var.cop[1];
+    cop3[0] = shape_info_var_red.cop[0]; cop3[1] = shape_info_var_red.cop[1];
     m = utils::crossProduct(cop3, f_t);
     force_at_center[0] = force_at_cop[0];
     force_at_center[1] = force_at_cop[1];
@@ -490,6 +492,10 @@ std::vector<double> ReducedFrictionModel::calc_beta(utils::vec vel_cop, std::vec
     return beta;
 }
 
+std::vector<double> ReducedFrictionModel::get_force_at_cop(){
+    return force_vec_cop;
+}
+
 
 namespace py = pybind11;
 
@@ -502,6 +508,7 @@ PYBIND11_MODULE(ReducedFrictionModelCPPClass, var) {
     py::class_<ReducedFrictionModel>(var, "ReducedFrictionModel")
         .def(py::init<>())
         .def("init", &ReducedFrictionModel::init)
-        .def("step", &ReducedFrictionModel::step);
+        .def("step", &ReducedFrictionModel::step)
+        .def("get_force_at_cop", &ReducedFrictionModel::get_force_at_cop);
 }
 

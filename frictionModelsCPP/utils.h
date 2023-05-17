@@ -50,6 +50,13 @@ namespace utils {
         std::vector<std::vector<double>> f_n_grid_norm; // row = ix and col = iy, i.e. f_n_grid[ix, iy]
     };
 
+
+    struct shape_info_red {
+        double fn;
+        std::vector<double> cop; // [x,y]
+        std::vector<double> cop_norm; // [x,y]
+    };
+
     struct if_calc{
         bool state;
         std::vector<double> value = std::vector<double>(3, 0.0);
@@ -74,6 +81,8 @@ namespace utils {
             double grid_size; // unit [m]
             std::vector<int> grid_shape; // [x, y]
             shape_info shape_info_var;
+            shape_info_red shape_info_var_red;
+
             void update_shape_info();
         public:
             P_x_y(){};
@@ -82,7 +91,7 @@ namespace utils {
             void set_fn(double fn);
             std::string get_shape();
             shape_info get(double size_);
-            shape_info get_red(double size_);
+            shape_info_red get_red(double size_);
     };
 
 

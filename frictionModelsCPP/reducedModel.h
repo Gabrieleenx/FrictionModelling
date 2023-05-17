@@ -54,7 +54,7 @@ class ReducedFrictionModel{
 
         utils::vec velocity;
         utils::P_x_y p_x_y;
-        utils::shape_info shape_info_var;
+        utils::shape_info_red shape_info_var_red;
         utils::properties properties; 
         utils::lugre_red lugre;
 
@@ -70,6 +70,7 @@ class ReducedFrictionModel{
         ReducedFrictionModel(){};
         void init(pybind11::list py_list, std::string shape_name, double fn);
         std::vector<double> step(pybind11::list py_list);
+        std::vector<double> get_force_at_cop();
 
 
 };
