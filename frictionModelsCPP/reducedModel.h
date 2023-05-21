@@ -65,7 +65,7 @@ class ReducedFrictionModel{
         std::vector<double> move_force_to_center(std::vector<double> force_at_cop);
 
         std::vector<double> calc_beta(utils::vec vel_cop, std::vector<double>& vel_cop_tau, double& v_norm);
-
+        void calc_SAv(utils::vec vel_cop, double& v_norm, std::vector<double>& Av, std::vector<double>& SAv);
     public:
         ReducedFrictionModel(){};
         void init(pybind11::list py_list, std::string shape_name, double fn);

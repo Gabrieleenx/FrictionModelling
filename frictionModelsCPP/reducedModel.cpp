@@ -394,19 +394,20 @@ std::vector<double> ReducedFrictionModel::step(pybind11::list py_list){
 
 void ReducedFrictionModel::update_lugre(utils::vec vel_cop){
     utils::properties p = properties;
-    std::vector<double> vel_cop_tau = {vel_cop.x, vel_cop.y, vel_cop.tau*gamma};
-    double v_norm = std::sqrt(pow(vel_cop_tau[0], 2) + pow(vel_cop_tau[1], 2) + pow(vel_cop_tau[2], 2));
+    double v_norm = 0;
     double alpha;
-    std::vector<double> beta;
+    //std::vector<double> beta;
+    std::vector<double> Av = {0.0, 0.0, 0.0};
+    std::vector<double> SAv = {0.0, 0.0, 0.0};
     std::vector<double> z_ss = {0.0, 0.0, 0.0}; // [x, y, tau]
     std::vector<double> dz = {0.0, 0.0, 0.0}; // [x, y, tau]
     std::vector<double> delta_z = {0.0, 0.0, 0.0}; // [x, y, tau]
-    beta = calc_beta(vel_cop, vel_cop_tau, v_norm);
+    calc_SAv(vel_cop, v_norm, Av, SAv);
     double g = p.mu_c + (p.mu_s - p.mu_c) * exp(- pow((v_norm/p.v_s), p.alpha));
     if (v_norm != 0){
-        z_ss[0] = beta[0] * vel_cop_tau[0]*g/(p.s0*v_norm);
-        z_ss[1] = beta[1] * vel_cop_tau[1]*g/(p.s0*v_norm);
-        z_ss[2] = beta[2] * vel_cop_tau[2]*g/(p.s0*v_norm);
+        z_ss[0] = SAv[0]*g/(p.s0*v_norm);
+        z_ss[1] = SAv[1]*g/(p.s0*v_norm);
+        z_ss[2] = SAv[2]*g/(p.s0*v_norm);
        
     }else{
         z_ss[0] = 0.0;
@@ -415,20 +416,29 @@ void ReducedFrictionModel::update_lugre(utils::vec vel_cop){
     }
 
     if (p.steady_state == true){
-        lugre.f[0] = -(p.s0 * z_ss[0] + viscus_scale[0] * p.s2*vel_cop_tau[0]) * shape_info_var_red.fn;
-        lugre.f[1] = -(p.s0 * z_ss[1] + viscus_scale[1] * p.s2*vel_cop_tau[1]) * shape_info_var_red.fn;
-        lugre.f[2] = -(p.s0 * z_ss[2] + viscus_scale[2] * p.s2*vel_cop_tau[2]) * shape_info_var_red.fn * gamma;
+        lugre.f[0] = -(p.s0 * z_ss[0] + viscus_scale[0] * p.s2*Av[0]) * shape_info_var_red.fn;
+        lugre.f[1] = -(p.s0 * z_ss[1] + viscus_scale[1] * p.s2*Av[1]) * shape_info_var_red.fn;
+        lugre.f[2] = -(p.s0 * z_ss[2] + viscus_scale[2] * p.s2*Av[2]) * shape_info_var_red.fn;
         return;
     }
 
     if (p.elasto_plastic == true){
-        alpha = utils::elasto_plastic(lugre.z, z_ss, p.z_ba_ratio, vel_cop_tau, 3);
+        std::vector<double> z_ = {0.0, 0.0, 0.0};
+        std::vector<double> z_ss_ = {0.0, 0.0, 0.0};
+        std::vector<double> v_ = {0.0, 0.0, 0.0};
+        z_ = lugre.z;
+        z_[2] = z_[2]*(1/gamma);
+        z_ss_ = z_ss;
+        z_ss_[2] =  z_ss_[2]*(1/gamma);
+        v_ = SAv;
+        v_[2] = v_[2] *(1/gamma);
+        alpha = utils::elasto_plastic(z_, z_ss_, p.z_ba_ratio, v_, 3);
     }else{
         alpha = 1;
     }
-    dz[0] = beta[0]*vel_cop_tau[0] - alpha * lugre.z[0] * p.s0 * v_norm / g;
-    dz[1] = beta[1]*vel_cop_tau[1] - alpha * lugre.z[1] * p.s0 * v_norm / g;
-    dz[2] = beta[2]*vel_cop_tau[2] - alpha * lugre.z[2] * p.s0 * v_norm / g;
+    dz[0] = SAv[0] - alpha * lugre.z[0] * p.s0 * v_norm / g;
+    dz[1] = SAv[1] - alpha * lugre.z[1] * p.s0 * v_norm / g;
+    dz[2] = SAv[2] - alpha * lugre.z[2] * p.s0 * v_norm / g;
 
     
     if (p.stability == true){
@@ -445,9 +455,9 @@ void ReducedFrictionModel::update_lugre(utils::vec vel_cop){
     lugre.z[1] += dz[1] * p.dt;
     lugre.z[2] += dz[2] * p.dt;
 
-    lugre.f[0] = -(p.s0 * lugre.z[0] + p.s1 * dz[0] + viscus_scale[0]*p.s2*vel_cop_tau[0]) * shape_info_var_red.fn;
-    lugre.f[1] = -(p.s0 * lugre.z[1] + p.s1 * dz[1] + viscus_scale[1]*p.s2*vel_cop_tau[1]) * shape_info_var_red.fn;
-    lugre.f[2] = -(p.s0 * lugre.z[2] + p.s1 * dz[2] + viscus_scale[2]*p.s2*vel_cop_tau[2]) * shape_info_var_red.fn * gamma;
+    lugre.f[0] = -(p.s0 * lugre.z[0] + p.s1 * dz[0] + viscus_scale[0]*p.s2*Av[0]) * shape_info_var_red.fn;
+    lugre.f[1] = -(p.s0 * lugre.z[1] + p.s1 * dz[1] + viscus_scale[1]*p.s2*Av[1]) * shape_info_var_red.fn;
+    lugre.f[2] = -(p.s0 * lugre.z[2] + p.s1 * dz[2] + viscus_scale[2]*p.s2*Av[2]) * shape_info_var_red.fn;
 
 }   
 
@@ -491,6 +501,34 @@ std::vector<double> ReducedFrictionModel::calc_beta(utils::vec vel_cop, std::vec
 
     return beta;
 }
+
+
+void ReducedFrictionModel::calc_SAv(utils::vec vel_cop, double& v_norm, std::vector<double>& Av, std::vector<double>& SAv){
+    std::vector<double> beta(3, 0.0);
+    std::vector<double> ls;
+    utils::vec new_vel;
+    double sx; double sy;
+    ls = pre_compute.get_bilinear_interpolation(vel_cop, gamma);
+    new_vel = pre_compute.calc_new_vel(vel_cop, gamma);
+
+    Av[0] = new_vel.x;
+    Av[1] = new_vel.y;
+    Av[2] = gamma*gamma*vel_cop.tau;
+
+    v_norm = std::sqrt(vel_cop.x*Av[0]+ vel_cop.y*Av[1] + vel_cop.tau*Av[2]);
+
+    int signx = ( Av[0] < 0) ? -1 : 1;
+    int signy = ( Av[1] < 0) ? -1 : 1;
+    int signt = ( Av[2] < 0) ? -1 : 1;
+
+
+    SAv[0] = abs(ls[0]) *signx* v_norm;
+    SAv[1] = abs(ls[1]) *signy* v_norm;
+    SAv[2] = abs(gamma*ls[2]) *signt* v_norm;
+    //std::cout <<  SAv[0] << " " <<  SAv[1] << " " <<  SAv[2] << " Qv " << Av[0]<< " "<< Av[1]<< " "<< Av[2]<< " vnorm " << v_norm << std::endl;
+
+}
+
 
 std::vector<double> ReducedFrictionModel::get_force_at_cop(){
     return force_vec_cop;

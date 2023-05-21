@@ -7,8 +7,8 @@ import time
 
 dt = 1e-4
 fn = 1
-sim_time = 5
-N = 10
+sim_time = 1
+N = 1
 contact_size = 0.02
 n_grids = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 101]
 num_time_steps = int(sim_time/dt)

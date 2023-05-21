@@ -381,7 +381,7 @@ class ReducedFrictionModel(FrictionBase):
 
         if self.p['elasto_plastic']:
             R_a = np.diag([1, 1, 1/self.ra])
-            vel_cop_tau = R_a.dot(inv_A).dot(vel_cop_list).flatten()
+            vel_cop_tau = R_a.dot(S_A).dot(inv_A_v).flatten()
             alpha = elasto_plastic_alpha(R_a.dot(self.lugre['z']).flatten(),
                                          R_a.dot(z_ss).flatten(),
                                          self.p['z_ba_ratio'],
