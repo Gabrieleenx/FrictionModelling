@@ -326,5 +326,7 @@ PYBIND11_MODULE(FrictionModelCPPClass, var) {
         .def(py::init<>())
         .def("init", &FullFrictionModel::init)
         .def("step", &FullFrictionModel::step)
-        .def("get_force_at_cop", &FullFrictionModel::get_force_at_cop);
+        .def("get_force_at_cop", &FullFrictionModel::get_force_at_cop)
+        .def("set_fn", &FullFrictionModel::set_fn);
+
 }

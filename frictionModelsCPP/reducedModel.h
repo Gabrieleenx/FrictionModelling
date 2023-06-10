@@ -71,6 +71,7 @@ class ReducedFrictionModel{
         void init(pybind11::list py_list, std::string shape_name, double fn);
         std::vector<double> step(pybind11::list py_list);
         std::vector<double> get_force_at_cop();
+        void set_fn(double fn){p_x_y.set_fn(fn);};
 
 
 };

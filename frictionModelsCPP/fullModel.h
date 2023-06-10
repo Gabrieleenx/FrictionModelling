@@ -34,5 +34,6 @@ class FullFrictionModel{
         std::vector<double> get_cop();
         utils::properties get_properties();
         std::vector<double> get_force_at_cop();
+        void set_fn(double fn){p_x_y.set_fn(fn);};
 };
 

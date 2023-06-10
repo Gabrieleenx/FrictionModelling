@@ -547,6 +547,7 @@ PYBIND11_MODULE(ReducedFrictionModelCPPClass, var) {
         .def(py::init<>())
         .def("init", &ReducedFrictionModel::init)
         .def("step", &ReducedFrictionModel::step)
-        .def("get_force_at_cop", &ReducedFrictionModel::get_force_at_cop);
+        .def("get_force_at_cop", &ReducedFrictionModel::get_force_at_cop)
+        .def("set_fn", &ReducedFrictionModel::set_fn);
 }
 

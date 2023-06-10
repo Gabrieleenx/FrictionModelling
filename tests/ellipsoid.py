@@ -10,6 +10,7 @@ from frictionModels.utils import vel_to_cop
 
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['font.serif'] = ['Times New Roman'] + mpl.rcParams['font.serif']
+mpl.rcParams["mathtext.fontset"] = 'cm'
 
 contact_size = 0.02
 n_cells = 101
@@ -56,8 +57,6 @@ ax.plot(data[0, markers[2]], data[1, markers[2]], 'v', alpha=0.7, markersize=7, 
 
 
 
-
-shapes = [surf.p_line, surf.p_circle, surf.p_square]
 shapes = {'Circle':[surf.p_circle, 0], 'Square':[surf.p_square, 0], 'Line $v_x$':[surf.p_line, 0], 'Line $v_y$':[surf.p_line, np.pi/2]}
 for k, (key, value) in enumerate(shapes.items()):
     direction = value[1]

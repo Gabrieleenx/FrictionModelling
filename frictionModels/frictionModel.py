@@ -454,6 +454,9 @@ class LuGre1D(object):
         self.p = properties
         self.fn = fn
 
+    def set_fn(self, fn):
+        self.fn = fn
+
     def ode_step(self, t, y, vel):
 
         z = y[0]
