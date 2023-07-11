@@ -16,6 +16,10 @@ import matplotlib as mpl
 
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['font.serif'] = ['Times New Roman'] + mpl.rcParams['font.serif']
+mpl.rcParams["mathtext.fontset"] = 'cm'
+mpl.rcParams['axes.xmargin'] = 0
+mpl.rcParams['axes.formatter.limits'] = (-2, 3)
+sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
 
 n_skipp = 10
 sim_time = 5
@@ -60,8 +64,8 @@ for i_param, f_param in enumerate(f_params):
              'mu_s': f_param['mu_s'],
              'v_s': 1e-3,
              'alpha': 2,
-             's0': 1e5,
-             's1': 2e1,
+             's0': 1e6,
+             's1': 8e1,
              's2': f_param['s2'],
              'dt': dt,
              'z_ba_ratio': 0.9,
@@ -113,8 +117,8 @@ for i_param, f_param in enumerate(f_params):
                  'mu_s': f_param['mu_s'],
                  'v_s': 1e-3,
                  'alpha': 2,
-                 's0': 1e5,
-                 's1': 2e1,
+                 's0': 1e6,
+                 's1': 8e1,
                  's2': f_param['s2'],
                  'dt': dt,
                  'z_ba_ratio': 0.9,
@@ -176,7 +180,6 @@ def get_rmse_curve(shape, i_p, n_grids, data, data_base):
 
     return n_grids, out_xy, out_tau
 
-sns.set_context("paper", font_scale=1.3, rc={"lines.linewidth": 2})
 f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(8, 12))
 for i_param, f_param in enumerate(f_params):
     print(i_param, len(f_param))
@@ -211,24 +214,25 @@ ax4.set_ylabel('Velocity $[rad/s]$')
 plt.tight_layout()
 plt.show()
 
-f, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 5))
+f, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 3))
 for i_param, f_param in enumerate(f_params):
     print(i_param, len(f_param))
     for i_shape, shape in enumerate(shapes):
         r1, r2, r3 = get_rmse_curve(shape, i_param, n_grids, data, data_base_line)
         ax1.plot(r1, r2, label=shape+" p="+str(i_param), alpha=0.7)
         ax2.plot(r1, r3, label=shape+" p="+str(i_param), alpha=0.7)
-ax1.legend(loc=1)
-ax1.set_xlabel('N')
-ax1.set_ylabel('rmse$/f_{max}$')
-ax1.set_title('Tangential friction force')
 
-ax2.legend(loc=1)
+ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+ax1.get_yaxis().set_label_coords(-0.11,0.5)
+ax1.set_ylabel('RMSE$/||\mathbf{f}_{t\max}||_2$', fontsize="10" )
+ax1.get_xaxis().set_visible(False)
+
+ax2.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+ax2.get_yaxis().set_label_coords(-0.11,0.5)
+ax2.set_ylabel('RMSE$/\\tau_{\max}$', fontsize="10")
 ax2.set_xlabel('N')
-ax2.set_ylabel('rmse$/\\tau_{max}$')
-ax2.set_title('Rotational friction force')
 
-plt.tight_layout()
+plt.tight_layout(h_pad=0.015)
 plt.show()
 
 f_2, (ax_21, ax_22, ax_23, ax_24) = plt.subplots(4, 1, figsize=(8, 12))

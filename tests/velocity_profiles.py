@@ -120,10 +120,10 @@ def vel_num_cells(t):
     t4 = 1.6
     t5 = 2.2
     t6 = 2.4
-    t7 = 3.0
-    t8 = 3.2
-    t9 = 3.8
-    t10 = 4.0
+    t7 = 2.7
+    t8 = 3.4
+    t9 = 4.0
+    t10 = 4.3
     t11 = 4.6
 
     if t < t1:
@@ -152,24 +152,24 @@ def vel_num_cells(t):
         tau = 1
     elif t < t7:
         vx = 0
-        vy = cor_max*(t-t6)/(t7-t6)
+        vy = 0.4*cor_max*(t-t6)/(t7-t6)
         tau = 1
     elif t < t8:
         vx = 0
-        vy = cor_max
+        vy = 0.4*cor_max
         tau = 1
     elif t < t9:
         vx = 0
-        vy = cor_max
+        vy = 0.4*cor_max
         tau = (t9 - t)/(t9-t8)
     elif t < t10:
         vx = 0
-        vy = cor_max
+        vy = 0.4*cor_max
         tau = 0
 
     elif t < t11:
         vx = 0
-        vy = cor_max * (t11 - t) / (t11 - t10)
+        vy = 0.4*cor_max * (t11 - t) / (t11 - t10)
         tau = 0
     else:
         vx = 0

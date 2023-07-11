@@ -10,6 +10,10 @@ import matplotlib as mpl
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['font.serif'] = ['Times New Roman'] + mpl.rcParams['font.serif']
 mpl.rcParams["mathtext.fontset"] = 'cm'
+mpl.rcParams['axes.xmargin'] = 0
+mpl.rcParams['axes.formatter.limits'] = (-2, 3)
+sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
+
 
 dt = 1e-4
 r = 0.05
@@ -21,8 +25,8 @@ p = {'grid_shape': (21, 21),  # number of grid elements in x any
      'mu_s': 1.2,
      'v_s': 1e-3,
      'alpha': 2,
-     's0': 1e5,
-     's1': 2e1,
+     's0': 1e6,
+     's1': 8e1,
      's2': 0.2,
      'dt': dt,
      'z_ba_ratio': 0.9,
@@ -37,8 +41,8 @@ p_elasto = {'grid_shape': (21, 21),  # number of grid elements in x any
              'mu_s': 1.2,
              'v_s': 1e-3,
              'alpha': 2,
-             's0': 1e5,
-             's1': 2e1,
+             's0': 1e6,
+             's1': 8e1,
              's2': 0.2,
              'dt': dt,
              'z_ba_ratio': 0.9,
@@ -83,14 +87,14 @@ def properties_to_list(prop):
 disc = CircularDisc(1, r, dt)
 disc_elasto = CircularDisc(1, r, dt)
 
-fic = cpp.FullFrictionModel()
-#fic = red_cpp.ReducedFrictionModel()
+#fic = cpp.FullFrictionModel()
+fic = red_cpp.ReducedFrictionModel()
 
 fic.init(properties_to_list(p), "Circle", disc.fn)
 
 
-fic_elasto = cpp.FullFrictionModel()
-#fic_elasto = red_cpp.ReducedFrictionModel()
+#fic_elasto = cpp.FullFrictionModel()
+fic_elasto = red_cpp.ReducedFrictionModel()
 
 fic_elasto.init(properties_to_list(p_elasto), "Circle", disc_elasto.fn)
 
@@ -138,66 +142,69 @@ for i_t in tqdm(range(num_time_steps)):
     data[9, i_t] = pos_elasto[2]
 
 #sns.set_context("paper", font_scale=1.3, rc={"lines.linewidth": 2})
-sns.set_theme("paper", "ticks", font_scale=1.3, rc={"lines.linewidth": 2})
-f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(8, 12))
-sns.despine(f)
+f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(6, 5))
 
-ax1.plot(data[0,:], data[1,:], '--', label="$p_x$", alpha=0.7)
-ax1.plot(data[0,:], data[2,:], '--', label="$p_y$", alpha=0.7)
-ax1.plot(data[0,:], data[7,:], label="$p_x$ elasto-plastic", alpha=0.7)
-ax1.plot(data[0,:], data[8,:], label="$p_y$ elasto-plastic", alpha=0.7)
-ax1.legend(loc=2)
-ax1.set_xlabel('t [s]')
-ax1.set_ylabel('Position [m]')
-ax1.set_title('Position')
+ax1.plot(data[0,:], data[1,:], '--', label="$x$", alpha=0.7)
+ax1.plot(data[0,:], data[2,:], '--', label="$y$", alpha=0.7)
+ax1.plot(data[0,:], data[7,:], label="$x$ e-p", alpha=0.7)
+ax1.plot(data[0,:], data[8,:], label="$y$ e-p", alpha=0.7)
 
-ax2.plot(data[0,:], data[3,:], '--', label="$\\Omega$", alpha=0.7)
-ax2.plot(data[0,:], data[9,:], label="$\\Omega$ elasto-plastic", alpha=0.7)
+ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+ax1.get_yaxis().set_label_coords(-0.11,0.5)
+ax1.set_ylabel('Position [m]', fontsize="10")
+ax1.get_xaxis().set_visible(False)
+#ax1.set_title("Elasto-plastic drift")
 
-ax2.legend(loc=2)
-ax2.set_xlabel('t [s]')
-ax2.set_ylabel('Orientation [rad]')
-ax2.set_title('Orientation')
+ax2.plot(data[0,:], data[3,:], '--', label="$\\theta$", alpha=0.7)
+ax2.plot(data[0,:], data[9,:], label="$\\theta$ e-p", alpha=0.7)
+
+ax2.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+ax2.get_yaxis().set_label_coords(-0.11,0.5)
+ax2.set_ylabel('Orientation [rad]', fontsize="10")
+ax2.get_xaxis().set_visible(False)
+
 
 ax3.plot(data[0,:], data[4,:], label="$f_x$", alpha=0.7)
 ax3.plot(data[0,:], data[5,:], label="$f_y$", alpha=0.7)
-ax3.legend(loc=2)
-ax3.set_xlabel('t [s]')
-ax3.set_ylabel('Force [N]')
-ax3.set_title('Tangential force')
+ax3.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+ax3.get_yaxis().set_label_coords(-0.11,0.5)
+ax3.set_ylabel('Force [N]', fontsize="10")
+ax3.get_xaxis().set_visible(False)
 
-ax4.plot(data[0,:], data[6,:], label="$f_{\\tau}$", alpha=0.7)
-ax4.legend(loc=2)
-ax4.set_xlabel('t [s]')
-ax4.set_ylabel('Torque [N/m]')
-ax4.set_title('Torque')
 
-plt.tight_layout()
+ax4.plot(data[0,:], data[6,:], label="$\\tau$", alpha=0.7)
+ax4.set_xlabel('Time [s]')
+ax4.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+ax4.get_yaxis().set_label_coords(-0.11,0.5)
+ax4.set_ylabel('Torque [Nm]', fontsize="10")
+
+plt.tight_layout(h_pad=0.015)
 plt.show()
 
 
-f, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
-sns.despine(f)
+f, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 3))
 
-ax1.plot(data[0,:], data[1,:], '--', label="$p_x$", alpha=0.7)
-ax1.plot(data[0,:], data[2,:], '--', label="$p_y$", alpha=0.7)
-ax1.plot(data[0,:], data[7,:], label="$p_x$ elasto-plastic", alpha=0.7)
-ax1.plot(data[0,:], data[8,:], label="$p_y$ elasto-plastic", alpha=0.7)
-ax1.legend(loc=2)
-ax1.set_xlabel('t [s]')
-ax1.set_ylabel('Position [m]')
-ax1.set_title('Position')
+ax1.plot(data[0,:], data[1,:], '--', label="$\\bar{x}$", alpha=0.7)
+ax1.plot(data[0,:], data[2,:], '--', label="$\\bar{y}$", alpha=0.7)
+ax1.plot(data[0,:], data[7,:], label="$\\bar{x}$ e-p", alpha=0.7)
+ax1.plot(data[0,:], data[8,:], label="$\\bar{y}$ e-p", alpha=0.7)
 
-ax2.plot(data[0,:], data[3,:], '--', label="$\\Omega$", alpha=0.7)
-ax2.plot(data[0,:], data[9,:], label="$\\Omega$ elasto-plastic", alpha=0.7)
+ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+ax1.get_yaxis().set_label_coords(-0.11,0.5)
+ax1.set_ylabel('Position [m]', fontsize="10")
+ax1.get_xaxis().set_visible(False)
+#ax1.set_title("Elasto-plastic drift")
 
-ax2.legend(loc=2)
-ax2.set_xlabel('t [s]')
-ax2.set_ylabel('Orientation [rad]')
-ax2.set_title('Orientation')
+ax2.plot(data[0,:], data[3,:], '--', label="$\\bar{\\theta}$", alpha=0.7)
+ax2.plot(data[0,:], data[9,:], label="$\\bar{\\theta}$ e-p", alpha=0.7)
+
+ax2.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+ax2.get_yaxis().set_label_coords(-0.11,0.5)
+ax2.set_ylabel('Orientation [rad]', fontsize="10")
+ax2.set_xlabel('Time [s]')
 
 
-plt.tight_layout()
+plt.tight_layout(h_pad=0.015)
 plt.show()
 
 

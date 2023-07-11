@@ -37,8 +37,8 @@ class CustomHashList3D(object):
 
         v_xy_norm = np.linalg.norm([vel['y'], vel['x']])
 
-        v_xy_norm = v_xy_norm / self.gamma  # Compensate for change in gamma and the velocity relation
-        a2 = np.arctan2(v_xy_norm, gamma * abs(vel['tau'])/self.gamma) * 2 * n/np.pi
+        v_xy_norm = v_xy_norm #/ self.gamma  # Compensate for change in gamma and the velocity relation
+        a2 = np.arctan2(v_xy_norm, gamma * abs(vel['tau'])) * 2 * n/np.pi
 
         r1 = int(a1)
         i1 = int(a2)
@@ -89,15 +89,21 @@ class CustomHashList3D(object):
         ax = np.arctan2(ls_0[2], ls_0[0]) + np.pi / 2
         ay = np.arctan2(ls_0[2], ls_0[1]) + np.pi / 2
 
-        iter_ = 5
+        iter_ = 20
         rx = ax
         ry = ay
+        print(ls_0)
+        vx__ = self.gamma *ls_0[0]
+        vx__0 = self.gamma *ls_0[0]
 
         for i in range(iter_):
             vx = self.gamma * np.sin(rx)
             vy = self.gamma * np.sin(ry)
+            print('vx', vx, 'vy', vy, 'new vx', vx__,  'new vy', -self.gamma *ls_0[1])
+            ls_ = self.get_bilinear_interpolation(vel={'x': vx__, 'y': vy, 'tau': 1}, gamma=self.gamma)
+            print(ls_[0] )
+            vx__ = vx__ * (self.gamma *ls_[0] + vx__0)/vx__0
 
-            ls_ = self.get_bilinear_interpolation(vel={'x': vx, 'y': vy, 'tau': 1}, gamma=self.gamma)
             bx = np.arctan2(ls_[2], ls_[0]) + np.pi / 2 + ax
             by = np.arctan2(ls_[2], ls_[1]) + np.pi / 2 + ay
 
@@ -110,7 +116,7 @@ class CustomHashList3D(object):
         vy = self.gamma * np.sin(ry)
 
         p_x = -vy
-        p_y = vx
+        p_y = vx__
 
         self.pos = np.array([p_x, p_y]) / self.gamma
 
@@ -132,6 +138,7 @@ class CustomHashList3D(object):
             p_x_n = abs(pos[0])/p_xy_n
             p_y_n = abs(pos[1])/p_xy_n
             nn = np.linalg.norm([vel_cop['x']*p_x_n, vel_cop['y']*p_y_n])/gamma # should this be gamma instead of self.gamma (was self.gamma before)?
+            #nn = np.linalg.norm([vel_cop['x'], vel_cop['y']])
             r = (2*np.arctan2(abs(vel_cop['tau']), nn))/(np.pi)
 
         new_vel_x = r*new_vel['x'] + (1-r)*vel_cop['x']

@@ -189,11 +189,11 @@ properties = {'grid_shape': (20, 20),  # number of grid elements in x any
               'mu_s': 1.3,
               'v_s': 1e-3,
               'alpha': 2,
-              's0': 1e5,
-              's1': 2e1,
+              's0': 1e6,
+              's1': 8e1,
               's2': 0.4,
               'dt': 5e-4,
-              'stability': False,
+              'stability': True,
               'elasto_plastic': True,
               'z_ba_ratio': 0.9,
               'steady_state': False}
@@ -270,32 +270,12 @@ for i in tqdm(range(n_steps)):
     data_red[4, i] = out['v']
     data_red[5, i] = out['x_s']
 
-obj_model_1d = MassSprringModel(m=mass, k=1e3)
-
-lugre1d = LuGre1D(properties=properties, fn=mass*9.81)
-
-sim_1d = Sim(dt=properties['dt'], friction_model=lugre1d, object_model=obj_model_1d)
-
-data_1d = np.zeros((6, n_steps))  #t, x_mass, v_mass, f_f, v_sprig, x_spring
-
-for i in tqdm(range(n_steps)):
-    sim_1d.step()
-    out = sim_1d.get_output()
-    data_1d[0, i] = out['t']
-    data_1d[1, i] = out['x_m']
-    data_1d[2, i] = out['v_m']
-    data_1d[3, i] = out['f_x']
-    data_1d[4, i] = out['v']
-    data_1d[5, i] = out['x_s']
-
-# plotting
 
 f, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 8))
 
 ax1.plot(data_full[0, :], data_full[1, :], alpha=0.7, label='x mass')
 ax1.plot(data_red[0, :], data_red[1, :], '--', label='x mass red')
 ax1.plot(data_full[0, :], data_full[5, :], alpha=0.7, label='x spring')
-ax1.plot(data_1d[0, :], data_1d[1, :], '--', label='x 1d LuGre')
 ax1.set_title('Distance')
 ax1.set_xlabel('Time')
 ax1.set_ylabel('Dist [m]')
@@ -304,7 +284,6 @@ ax1.legend()
 ax2.plot(data_full[0, :], data_full[2, :], label='v mass')
 ax2.plot(data_full[0, :], data_full[4, :], label='v spring')
 ax2.plot(data_red[0, :], data_red[2, :], '--', label='v mass red')
-ax2.plot(data_1d[0, :], data_1d[2, :], '--', label='v 1d LuGre')
 
 ax2.set_title('Velocity')
 ax2.set_xlabel('Time')
@@ -313,7 +292,6 @@ ax2.legend()
 
 ax3.plot(data_full[0, :], data_full[3, :], label='f friction')
 ax3.plot(data_red[0, :], data_red[3, :], label='f friction red')
-ax3.plot(data_1d[0, :], data_1d[3, :], label='f 1d LuGre')
 
 ax3.set_title('Friction')
 ax3.set_xlabel('Time')

@@ -10,6 +10,11 @@ from frictionModels.utils import vel_to_cop
 
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['font.serif'] = ['Times New Roman'] + mpl.rcParams['font.serif']
+mpl.rcParams["mathtext.fontset"] = 'cm'
+mpl.rcParams['axes.xmargin'] = 0
+mpl.rcParams['axes.formatter.limits'] = (-2, 3)
+sns.set_theme("paper", "ticks", font_scale=1.5, rc={"lines.linewidth": 2})
+
 
 
 contact_size = 0.02
@@ -71,26 +76,23 @@ max_save3d = np.max(abs(data3d), axis=1)
 data3d = data3d.T / max_save3d
 data3d = data3d.T
 
-sns.set_context("paper", font_scale=1.5, rc={"lines.linewidth": 2})
 
-fig = plt.figure(figsize=(4,4.5))
+fig = plt.figure(figsize=(4,4))
 ax = fig.add_subplot(projection='3d')
 
 ax.scatter(data3d[0,:], data3d[1,:], data3d[2,:], c=data3d[2,:], cmap='viridis')
-ax.set_xlabel('$f_x/f_{t_{max}}$')
-ax.set_ylabel('$f_y/f_{t_{max}}$')
-ax.set_zlabel('$f_\\tau /f_{\\tau_{max}} $')
-ax.set_title('Limit surface (Line grad)')
+ax.set_xlabel('$f_x/f_{x{\max}}$' )
+ax.set_ylabel('$f_y/f_{y{\max}}$')
+ax.set_zlabel('$\\tau /\\tau_{\max} $' )
 # Disable rotation for x-axis, y-axis, and z-axis labels
 
 ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-
+ax.axis('equal')
 ax.view_init(elev=20, azim=69, roll=0)
 
 # Set the limits of the axes
-ax.set_box_aspect([1,1,1])
 plt.tight_layout()
 
 plt.show()

@@ -119,7 +119,24 @@ double utils::shape_function(std::string shape_name, int ix, int iy, std::vector
             }
         }
     }
-
+    if (shape_name == "LineGradX"){
+        if (grid_shape[1]/2.0 == int(grid_shape[1]/2.0)){
+            if (iy == int(grid_shape[1]/2.0) || iy == int(grid_shape[1]/2.0) -1){
+                pressure = 1 - double(ix)/grid_shape[0];
+            }else
+            {
+                pressure = 0;
+            }
+            
+        }else{
+            if (iy == int(grid_shape[1]/2.0)){
+                pressure = 1 - double(ix)/grid_shape[0];
+            }else
+            {
+                pressure = 0;
+            }
+        }
+    }
 
     if (shape_name == "Line"){
         if (grid_shape[0]/2.0 == int(grid_shape[0]/2.0)){

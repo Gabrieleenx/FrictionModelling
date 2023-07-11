@@ -4,8 +4,10 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
+from animate import Animate
 from frictionModels.utils import vel_to_cop
-
+import surfaces.surfaces as surf
+from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
 from matplotlib.patches import Rectangle, Circle
 
 import matplotlib as mpl
@@ -20,12 +22,12 @@ sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
 
 
 dt = 1e-4
-r = 0.01 #radius
+r = 0.01
 sim_time = 2
 n = 5
 time_stamps = np.arange(n)/(n-1) * (sim_time)
-shape = 'LineGradX'
-title_ = '--'
+shape = 'Circle'
+title_ = 'Circular contact'
 p = {'grid_shape': (21, 21),  # number of grid elements in x any
      'grid_size': 2*r / 21,  # the physical size of each grid element
      'mu_c': 1.0,
@@ -67,7 +69,7 @@ class obeject_dynamics(object):
         self.b = b
         self.I = (m/12) * (b**2 + h**2)
         self.vel = np.zeros(3)
-        self.pos = np.array([0.002,0.0,0.0])
+        self.pos = np.array([0.025,0.0,0.0])
 
     def step(self, f_f):
         f_g = -9.81 * self.m
@@ -124,10 +126,11 @@ data = {'p_x':[], 'p_y':[], 'theta':[],
 
 i_c = int(0.001/dt)
 for i_t in tqdm(range(num_time_steps)):
-    fn = 1.73+0.91*np.sin(i_t*dt*2*np.pi*2) - 0.0*i_t*dt
-    fn2 = 1.5 # do a second force profile that gives more rotation
-    if 0.65*(num_time_steps/4) < i_t and i_t < (num_time_steps/4):
-        fn2=0.91
+
+    fn = 3.6+0.9*np.sin(i_t*dt*2*np.pi*2) - 0.0*i_t*dt
+    fn2 = 4 # do a second force profile that gives more rotation
+    if 0.6*(num_time_steps/4) < i_t and i_t < (num_time_steps/4):
+        fn2=2.9
 
     vel, pos = object_.step(np.array(f_f))
     vel_ = vel_to_cop(-pos[0:2], {'x':vel[0], 'y':vel[1], 'tau':vel[2]})
@@ -136,6 +139,7 @@ for i_t in tqdm(range(num_time_steps)):
     f = np.array(f)*2
     f.tolist()
     f_f = move_force_to_point(f, pos[0:2])
+
     vel_red, pos_red = object_red.step(np.array(f_f_red))
     vel_red_ = vel_to_cop(-pos_red[0:2], {'x': vel_red[0], 'y': vel_red[1], 'tau': vel_red[2]})
     fic_red.set_fn(fn)
@@ -191,10 +195,10 @@ def plot_box(x, y, theta, h, w, ax, color, label):
     rect.set_linewidth(2)
 
 
-f, ax = plt.subplots(1, 1, figsize=(4.2,2.6))
-lim_scale = 0.6
-ax.set_xlim(-lim_scale*object_width, lim_scale*object_width)
-ax.set_ylim(-object_height, 0.8*object_height)
+f, ax = plt.subplots(1, 1, figsize=(3,2.6))
+lim_scale = 0.8
+ax.set_xlim(-0.5*object_width, lim_scale*object_width)
+ax.set_ylim(-1.4*object_height, 0.9*object_height)
 i_t_max = int(sim_time/(dt* i_c))
 for t in time_stamps:
     if t>=sim_time:
@@ -216,13 +220,12 @@ ax.add_patch(circle2)
 ax.plot(data['p_x'], data['p_y'], alpha=0.7, label='CoM')
 ax.set_xlabel('x [m]', fontsize="10")
 ax.set_ylabel('Position y [m]', fontsize="10")
-ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
+#ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 
 plt.tight_layout(h_pad=0.015)
 plt.show()
 
-#f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(6,5))
-f, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(6,3.8))
+f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(6,5))
 #sns.despine(f)
 
 ax1.plot(data['t'], data['p_x'], label="$x_1$", alpha=0.7)
@@ -234,7 +237,6 @@ ax1.get_yaxis().set_label_coords(-0.11,0.5)
 ax1.set_ylabel('Position [m]', fontsize="10" )
 ax1.get_xaxis().set_visible(False)
 #ax1.set_title(title_)
-
 ax2.plot(data['t'], data['p_y'], label="$y_1$", alpha=0.7)
 ax2.plot(data['t'], data['p_y_red'], label="$\\bar{y}_1$", alpha=0.7)
 ax2.plot(data['t'], data['p_y2'], '--', label="$y_2$", alpha=0.7)
@@ -251,17 +253,14 @@ ax3.plot(data['t'], data['theta_red2'], '--', label="$\\bar{\\theta}_2$", alpha=
 ax3.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax3.get_yaxis().set_label_coords(-0.11,0.5)
 ax3.set_ylabel('Orientation [rad]', fontsize="10" )
-ax3.set_xlabel('Time [s]', fontsize="10")
+ax3.get_xaxis().set_visible(False)
 
-#ax3.get_xaxis().set_visible(False)
-"""
 ax4.plot(data['t'], data['fn'], label="$f_{n1}$", alpha=0.7)
 ax4.plot(data['t'], data['fn2'], '--', label="$f_{n2}$", alpha=0.7)
 ax4.set_xlabel('Time [s]', fontsize="10")
 ax4.set_ylabel('Normal force [N]', fontsize="10")
 ax4.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax4.get_yaxis().set_label_coords(-0.11,0.5)
-"""
 
 plt.tight_layout(h_pad=0.015)
 plt.show()
