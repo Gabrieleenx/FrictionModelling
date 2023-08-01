@@ -13,7 +13,8 @@ sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
 
 import surfaces.surfaces as surf
 from tests.velocity_profiles import *
-from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
+from frictionModels.frictionModel import DistributedFrictionModel, ReducedFrictionModel
+
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
 from frictionModels.utils import vel_to_cop
@@ -31,7 +32,7 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               'dt': 1e-4,
               'z_ba_ratio': 0.9,
               'stability': True,
-              'elasto_plastic': True,
+              'elasto_plastic': False,
               'steady_state': False,
               'n_ls': 20}
 def properties_to_list(prop):
@@ -60,12 +61,14 @@ n_steps = int(time / properties['dt'])
 
 # initialize friction models
 
-planar_lugre = FullFrictionModel(properties=properties)
+planar_lugre = DistributedFrictionModel(properties=properties)
 planar_lugre.update_p_x_y(shape)
 cop = planar_lugre.cop
 planar_lugre_reduced = ReducedFrictionModel(properties=properties, nr_ls_segments=20)
 planar_lugre_reduced.update_p_x_y(shape)
 planar_lugre_reduced.update_pre_compute()
+
+
 #planar_lugre_reduced.ls_active = False
 # initialize data collection
 

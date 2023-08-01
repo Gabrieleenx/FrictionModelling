@@ -92,7 +92,6 @@ fic = red_cpp.ReducedFrictionModel()
 
 fic.init(properties_to_list(p), "Circle", disc.fn)
 
-
 #fic_elasto = cpp.FullFrictionModel()
 fic_elasto = red_cpp.ReducedFrictionModel()
 

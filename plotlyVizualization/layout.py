@@ -8,8 +8,8 @@ def get_layout():
             html.Div([
                 html.Label('Friction Model'),
                 dcc.Checklist(
-                    ['Full', 'Reduced with LS', 'Reduced with ellipse'],
-                    ['Full'],
+                    ['Distributed', 'Reduced with LS', 'Reduced with ellipse'],
+                    ['Distributed'],
                     id='friction_model',
                     labelStyle={'display': 'inline-block', 'marginTop': '5px'}
                 )],

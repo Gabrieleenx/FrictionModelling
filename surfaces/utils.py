@@ -2,7 +2,6 @@ import numpy as np
 
 
 def create_circular_mask(h, w, center=None, radius=None):
-
     if center is None:  # use the middle of the image
         center = (int(w/2), int(h/2))
     if radius is None:  # use the smallest distance between the center and image walls

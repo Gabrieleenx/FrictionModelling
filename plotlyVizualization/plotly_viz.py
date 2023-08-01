@@ -1,11 +1,9 @@
-import numpy as np
 from dash import Dash, html, dcc, Input, Output
-import plotly.graph_objects as go
 from utils import *
-from frictionModels.utils import vel_to_cop, CustomHashList3D
+from frictionModels.utils import vel_to_cop
 from layout import get_layout
 from surfaces.surfaces import p_square, p_line, p_circle, p_line_grad, PObject
-from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
+from frictionModels.frictionModel import DistributedFrictionModel, ReducedFrictionModel
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = Dash(__name__, external_stylesheets=external_stylesheets)
@@ -66,8 +64,8 @@ def update_surface_data(model,
     data = dict()
     p_obj = PObject(properties['grid_size'], properties['grid_shape'], shape_set[shape])
 
-    if 'Full' in model:
-        planar_lugre = FullFrictionModel(properties=properties)
+    if 'Distributed' in model:
+        planar_lugre = DistributedFrictionModel(properties=properties)
         planar_lugre.update_p_x_y(p_obj)
         f_surf, t_surf, x_y = calc_surface(planar_lugre, lin_vel_range, ang_vel_range, res, direction)
         data_local = dict()
@@ -75,7 +73,7 @@ def update_surface_data(model,
         data_local['tau'] = t_surf
         data_local['x'] = x_y[0]
         data_local['y'] = x_y[1]
-        data['Full'] = data_local
+        data['Distributed'] = data_local
 
     if 'Reduced with LS' in model:
         planar_lugre_reduced = ReducedFrictionModel(properties=properties)
@@ -208,7 +206,7 @@ def update_contact(shape,
                   'steady_state': True}
     p_obj = PObject(properties['grid_size'], properties['grid_shape'], shape_set[shape])
 
-    planar_lugre = FullFrictionModel(properties=properties)
+    planar_lugre = DistributedFrictionModel(properties=properties)
     planar_lugre.update_p_x_y(p_obj)
     cop = planar_lugre.cop
     lin_vel_x = np.cos(direction)*lin_vel
@@ -331,7 +329,7 @@ def update_ellipse(shape,
 
     p_obj = PObject(properties['grid_size'], properties['grid_shape'], shape_set[shape])
 
-    planar_lugre = FullFrictionModel(properties=properties)
+    planar_lugre = DistributedFrictionModel(properties=properties)
     planar_lugre_reduced = ReducedFrictionModel(properties=properties, nr_ls_segments=20)
 
     planar_lugre.update_p_x_y(p_obj)

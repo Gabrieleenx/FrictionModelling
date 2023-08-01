@@ -4,6 +4,13 @@ from surfaces.utils import create_circular_mask
 
 class PObject(object):
     def __init__(self, size, shape_, shape_fun, fn=1):
+        """
+        Object for the pressure contact
+        :param size: Size in [m] for a grid cell
+        :param shape_: (int, int) how many cells
+        :param shape_fun: the function that returns the normal force of each cell
+        :param fn: The total normal force
+        """
         self.size = size
         self.shape_fun = shape_fun
         self.shape_ = shape_
@@ -12,14 +19,31 @@ class PObject(object):
         self.set_pressure_shape(size, shape_, shape_fun, fn)
 
     def set_fn(self, fn):
+        """
+        Change the normal force
+        :param fn: double
+        """
         self.fn = fn
 
     def get(self, size):
+        """
+        Returns the properties of the contact surface
+        :param size: size of a cell
+        :return: normal force for each cell, location of CoP and the total normal force.
+        """
         p = self.pressure_grid_norm*self.fn
         cop = self.cop*size/self.size
         return p, cop, self.fn
 
     def set_pressure_shape(self, size, shape_, shape_fun, fn=1):
+        """
+        Update the normalized pressure distribution
+        :param size: double
+        :param shape_: (int, int)
+        :param shape_fun: the function that returns the normal force of each cell
+        :param fn: fn=1
+        :return:
+        """
         area = size**2
         pressure_grid = shape_fun(shape_) * area
         fn_ = np.sum(pressure_grid)
@@ -35,15 +59,28 @@ class PObject(object):
         self.cop[1] = np.sum(y_pos.dot(self.pressure_grid_norm.T))
 
 def p_square(shape_):
+    """
+    A function that returns the normal force of each cell
+    :param shape_: (int, int)
+    :return:
+    """
     return np.ones(shape_) * 1e3
 
-
 def p_circle(shape_):
+    """
+    A function that returns the normal force of each cell
+    :param shape_: (int, int)
+    :return:
+    """
     m = np.ones(shape_) * 1e3
     return m * create_circular_mask(shape_[0], shape_[1])
 
-
 def p_line(shape_):
+    """
+    A function that returns the normal force of each cell
+    :param shape_: (int, int)
+    :return:
+    """
     shape = shape_
     p = np.zeros(shape)
     if shape[0]/2 == shape[0]//2:
@@ -54,8 +91,12 @@ def p_line(shape_):
         p[shape[0]//2, :] = np.ones(shape[0]) * 1e3
     return p
 
-
 def p_line_grad(shape_):
+    """
+    A function that returns the normal force of each cell
+    :param shape_: (int, int)
+    :return:
+    """
     shape = shape_
     p = np.zeros(shape)
     if shape[0]/2 == shape[0]//2:
