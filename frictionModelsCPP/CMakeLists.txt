@@ -13,11 +13,11 @@ set(PYBIND11_PYTHON_VERSION "3.10")
 # Add the source files to a library
 add_library(mymodule_lib SHARED utils.cpp)
 
-pybind11_add_module(FrictionModelCPPClass SHARED fullModel.cpp)
+pybind11_add_module(FrictionModelCPPClass SHARED distributedModel.cpp)
 
 target_link_libraries(FrictionModelCPPClass PRIVATE mymodule_lib pybind11::module)
 
-add_library(mymodule_lib2 SHARED fullModel.cpp)
+add_library(mymodule_lib2 SHARED distributedModel.cpp)
 
 pybind11_add_module(ReducedFrictionModelCPPClass SHARED reducedModel.cpp)
 

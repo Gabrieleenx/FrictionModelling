@@ -1,8 +1,8 @@
-#include "fullModel.h"
+#include "distributedModel.h"
 #include <iostream>
 #include <algorithm>
 
-void FullFrictionModel::init(pybind11::list py_list, std::string shape_name, double fn){
+void DistributedFrictionModel::init(pybind11::list py_list, std::string shape_name, double fn){
     
     properties.grid_shape = {pybind11::cast<int>(py_list[0]), pybind11::cast<int>(py_list[1])};
     properties.grid_size = pybind11::cast<double>(py_list[2]);
@@ -43,7 +43,7 @@ void FullFrictionModel::init(pybind11::list py_list, std::string shape_name, dou
 }
 
 
-void FullFrictionModel::init_cpp(utils::properties properties_, std::string shape_name, double fn){
+void DistributedFrictionModel::init_cpp(utils::properties properties_, std::string shape_name, double fn){
     
     properties = properties_;
 
@@ -73,21 +73,21 @@ void FullFrictionModel::init_cpp(utils::properties properties_, std::string shap
 
 }
 
-std::vector<double> FullFrictionModel::get_cop(){
+std::vector<double> DistributedFrictionModel::get_cop(){
     return shape_info_var.cop;
 }
 
 
-utils::properties FullFrictionModel::get_properties(){
+utils::properties DistributedFrictionModel::get_properties(){
     return properties;
 }
 
-std::vector<double> FullFrictionModel::get_force_at_cop(){
+std::vector<double> DistributedFrictionModel::get_force_at_cop(){
     return force_vec_cop;
 }
 
 
-std::vector<double> FullFrictionModel::step(pybind11::list py_list){
+std::vector<double> DistributedFrictionModel::step(pybind11::list py_list){
     velocity.x = pybind11::cast<double>(py_list[0]);
     velocity.y = pybind11::cast<double>(py_list[1]);
     velocity.tau = pybind11::cast<double>(py_list[2]);
@@ -102,7 +102,7 @@ std::vector<double> FullFrictionModel::step(pybind11::list py_list){
 }
 
 
-std::vector<double> FullFrictionModel::step_cpp(utils::vec vel){
+std::vector<double> DistributedFrictionModel::step_cpp(utils::vec vel){
     velocity = vel;
     shape_info_var = p_x_y.get(properties.grid_size);
 
@@ -115,7 +115,7 @@ std::vector<double> FullFrictionModel::step_cpp(utils::vec vel){
 }
 
 
-std::vector<double> FullFrictionModel::step_single_point(){
+std::vector<double> DistributedFrictionModel::step_single_point(){
     update_velocity_grid(velocity);
     update_lugre();
     std::vector<double> force_vec;
@@ -125,7 +125,7 @@ std::vector<double> FullFrictionModel::step_single_point(){
 }
 
 
-std::vector<double> FullFrictionModel::step_bilinear(){
+std::vector<double> DistributedFrictionModel::step_bilinear(){
     std::vector<double> force_at_center(3);
 
     if(velocity.tau == 0){
@@ -185,7 +185,7 @@ std::vector<double> FullFrictionModel::step_bilinear(){
 }
 
 
-void FullFrictionModel::update_velocity_grid(utils::vec vel){
+void DistributedFrictionModel::update_velocity_grid(utils::vec vel){
     std::vector<double> w = {0.0, 0.0, vel.tau};
     std::vector<double> p = {0.0, 0.0, 0.0};
     std::vector<double> r = {0.0, 0.0, 0.0};
@@ -206,13 +206,13 @@ void FullFrictionModel::update_velocity_grid(utils::vec vel){
 }
 
 
-void FullFrictionModel::update_lugre(){
+void DistributedFrictionModel::update_lugre(){
     double v_norm;
     double v_norm1;
     double vx;
     double vy;
     double g;
-    double alpha;
+    double beta;
     std::vector<double> z_ss = {0.0, 0.0}; // [x, y]
     std::vector<double> dz = {0.0, 0.0}; // [x, y]
     std::vector<double> delta_z = {0.0, 0.0}; // [x, y]
@@ -242,9 +242,9 @@ void FullFrictionModel::update_lugre(){
 
             
             if (p.elasto_plastic == true){
-                alpha = utils::elasto_plastic(lugre.z[ix][iy], z_ss, p.z_ba_ratio, vel_grid[ix][iy], 2);
-                dz[0] = vx - alpha * lugre.z[ix][iy][0] * p.s0 * v_norm / g;
-                dz[1] = vy - alpha * lugre.z[ix][iy][1] * p.s0 * v_norm / g;
+                beta = utils::elasto_plastic(lugre.z[ix][iy], z_ss, p.z_ba_ratio, vel_grid[ix][iy], 2);
+                dz[0] = vx - beta * lugre.z[ix][iy][0] * p.s0 * v_norm / g;
+                dz[1] = vy - beta * lugre.z[ix][iy][1] * p.s0 * v_norm / g;
             }else{
                 dz[0] = vx - lugre.z[ix][iy][0] * p.s0 * v_norm / g;
                 dz[1] = vy - lugre.z[ix][iy][1] * p.s0 * v_norm / g;
@@ -270,7 +270,7 @@ void FullFrictionModel::update_lugre(){
 
 }
 
-std::vector<double> FullFrictionModel::approximate_integral(){
+std::vector<double> DistributedFrictionModel::approximate_integral(){
     double fx = 0;
     double fy = 0;
     double tau = 0;
@@ -297,7 +297,7 @@ std::vector<double> FullFrictionModel::approximate_integral(){
     return force_vec;
 }
 
-std::vector<double> FullFrictionModel::move_force_to_cop(std::vector<double> force_at_center){
+std::vector<double> DistributedFrictionModel::move_force_to_cop(std::vector<double> force_at_center){
     std::vector<double> f_t(3, 0.0);
     std::vector<double> cop3(3, 0.0);
     std::vector<double> m;
@@ -316,17 +316,17 @@ std::vector<double> FullFrictionModel::move_force_to_cop(std::vector<double> for
 
 namespace py = pybind11;
 
-//FullFrictionModel hh;
+//DistributedFrictionModel hh;
 //int ss = hh.step(0.1);
 
 PYBIND11_MODULE(FrictionModelCPPClass, var) {
     var.doc() = "pybind11 example module for a class";
     
-    py::class_<FullFrictionModel>(var, "FullFrictionModel")
+    py::class_<DistributedFrictionModel>(var, "DistributedFrictionModel")
         .def(py::init<>())
-        .def("init", &FullFrictionModel::init)
-        .def("step", &FullFrictionModel::step)
-        .def("get_force_at_cop", &FullFrictionModel::get_force_at_cop)
-        .def("set_fn", &FullFrictionModel::set_fn);
+        .def("init", &DistributedFrictionModel::init)
+        .def("step", &DistributedFrictionModel::step)
+        .def("get_force_at_cop", &DistributedFrictionModel::get_force_at_cop)
+        .def("set_fn", &DistributedFrictionModel::set_fn);
 
 }

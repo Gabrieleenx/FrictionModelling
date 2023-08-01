@@ -32,7 +32,7 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               'dt': 1e-4,
               'z_ba_ratio': 0.9,
               'stability': True,
-              'elasto_plastic': False,
+              'elasto_plastic': True,
               'steady_state': False,
               'n_ls': 20}
 def properties_to_list(prop):
@@ -45,7 +45,7 @@ def properties_to_list(prop):
             list_.append(prop[key])
     return list_
 
-fic = cpp.FullFrictionModel()
+fic = cpp.DistributedFrictionModel()
 
 shape_name = "LineGrad"
 fn = 1.0
@@ -183,8 +183,8 @@ ax1.plot(data_full_cpp[0, :], data_full_cpp[2, :], alpha=0.7, label='$f_y$')
 #ax1.plot(data_full[0, :], data_full[2, :], alpha=0.7, label='fy')
 ax1.plot(data_reduced[0, :], data_reduced[1, :], '--', label='$\\bar{f_x}$')
 ax1.plot(data_reduced[0, :], data_reduced[2, :], '--', label='$\\bar{f_y}$')
-ax1.plot(data_reduced_cpp[0, :], data_reduced_cpp[1, :], '--', label='$f_x$ reduced')
-ax1.plot(data_reduced_cpp[0, :], data_reduced_cpp[2, :], '--', label='$f_y$ reduced')
+ax1.plot(data_reduced_cpp[0, :], data_reduced_cpp[1, :], '--', label='$f_x$ reduced cpp')
+ax1.plot(data_reduced_cpp[0, :], data_reduced_cpp[2, :], '--', label='$f_y$ reduced cpp')
 ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax1.get_yaxis().set_label_coords(-0.11,0.5)
 ax1.set_ylabel('Force [N]', fontsize="10" )

@@ -5,7 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-class FullFrictionModel{
+class DistributedFrictionModel{
     private:
         utils::vec velocity;
         utils::P_x_y p_x_y;
@@ -26,7 +26,7 @@ class FullFrictionModel{
         std::vector<double> move_force_to_cop(std::vector<double> force_at_center);
 
     public:
-        FullFrictionModel(){};
+        DistributedFrictionModel(){};
         void init(pybind11::list py_list, std::string shape_name, double fn);
         void init_cpp(utils::properties properties_, std::string shape_name, double fn);
         std::vector<double> step(pybind11::list py_list);

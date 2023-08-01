@@ -9,7 +9,7 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               'mu_c': 1, # Coulomb friction coefficient 
               'mu_s': 1.2, # static friction coefficient 
               'v_s': 1e-3, # Stribeck velocity 
-              'alpha': 2, # Coefficient 
+              'alpha': 2, # Coefficient (called gamma in paper)
               's0': 1e6, # LuGre stiffness  
               's1': 8e1, # LuGre dampening 
               's2': 0.2, # vicious friction coefficient 
@@ -446,19 +446,19 @@ class ReducedFrictionModel(FrictionBase):
         A[0,2] = sx
         A[1,2] = sy
         A_sym = (A.T + A)/2
-        v_s = np.sqrt(vel_cop_list.T.dot(A_sym).dot(vel_cop_list))
+        v_n = np.sqrt(vel_cop_list.T.dot(A_sym).dot(vel_cop_list))
 
         if self.ls_active:
             h = self.limit_surface.get_bilinear_interpolation(vel_cop, self.ra)
 
-            w_vs = np.sign(np.diag(A.dot(vel_cop_list).flatten())).dot(S).dot(np.abs(h))*v_s
+            w_vn = np.sign(np.diag(A.dot(vel_cop_list).flatten())).dot(S).dot(np.abs(h))*v_n
         else:
-            w_vs = A.dot(vel_cop_list)
+            w_vn = A.dot(vel_cop_list)
 
-        g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * np.exp(- (v_s / self.p['v_s']) ** self.p['alpha'])
+        g = self.p['mu_c'] + (self.p['mu_s'] - self.p['mu_c']) * np.exp(- (v_n / self.p['v_s']) ** self.p['alpha'])
 
-        if v_s != 0:
-            z_ss = (w_vs * g) / (self.p['s0'] * v_s)
+        if v_n != 0:
+            z_ss = (w_vn * g) / (self.p['s0'] * v_n)
         else:
             z_ss = np.zeros((3, 1))
 
@@ -470,12 +470,12 @@ class ReducedFrictionModel(FrictionBase):
             beta = elasto_plastic_beta(np.linalg.pinv(S).dot(self.lugre['z']).flatten(),
                                          np.linalg.pinv(S).dot(z_ss).flatten(),
                                          self.p['z_ba_ratio'],
-                                         np.linalg.pinv(S).dot(w_vs).flatten())
+                                         np.linalg.pinv(S).dot(w_vn).flatten())
 
         else:
             beta = 1
 
-        dz = w_vs - beta * self.lugre['z'] * (self.p['s0'] * (v_s / g))
+        dz = w_vn - beta * self.lugre['z'] * (self.p['s0'] * (v_n / g))
 
         if self.p['stability']:
             z = self.lugre['z']
