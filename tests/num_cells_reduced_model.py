@@ -12,7 +12,7 @@ import surfaces.surfaces as surf
 shape_set = {'Square': surf.p_square, 'Circle': surf.p_circle, 'Line': surf.p_line, 'LineGrad': surf.p_line_grad}
 from frictionModels.utils import vel_to_cop
 import time as time_
-from velocity_profiles import vel_num_cells
+from tests.velocity_profiles import vel_num_cells
 import matplotlib as mpl
 
 mpl.rcParams['font.family'] = 'Times New Roman'

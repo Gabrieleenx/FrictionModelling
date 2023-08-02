@@ -6,7 +6,7 @@ import seaborn as sns
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
-from velocity_profiles import vel_num_cells
+from tests.velocity_profiles import vel_num_cells
 import matplotlib as mpl
 import surfaces.surfaces as surf
 from frictionModels.utils import vel_to_cop

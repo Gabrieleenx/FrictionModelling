@@ -1,7 +1,7 @@
 from dash import Dash, html, dcc, Input, Output
-from utils import *
+from plotlyVizualization.utils import *
 from frictionModels.utils import vel_to_cop
-from layout import get_layout
+from plotlyVizualization.layout import get_layout
 from surfaces.surfaces import p_square, p_line, p_circle, p_line_grad, PObject
 from frictionModels.frictionModel import DistributedFrictionModel, ReducedFrictionModel
 
