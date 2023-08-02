@@ -1,16 +1,17 @@
+"""
+This file test how the resolution of the contact surface used for pre-calculating the limit surface influences the
+reduced model.
+"""
 import numpy as np
 import seaborn as sns
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
-from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
 import surfaces.surfaces as surf
 shape_set = {'Square': surf.p_square, 'Circle': surf.p_circle, 'Line': surf.p_line, 'LineGrad': surf.p_line_grad}
 from frictionModels.utils import vel_to_cop
-
 import time as time_
-
 from velocity_profiles import vel_num_cells
 import matplotlib as mpl
 
@@ -32,10 +33,7 @@ time = []
 data_vel = {'x':[], 'y':[], 'tau':[]}
 data_base_line = {}
 data = {}
-
 contact_size = 0.02
-
-
 
 def properties_to_list(prop):
     list_ = []
@@ -49,11 +47,7 @@ def properties_to_list(prop):
 
 
 shapes = ['Square', 'Circle', 'LineGrad']
-
-
 n_grids = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35]
-
-#n_grids = [21, 23]
 f_params = [{'mu_c':1, 'mu_s':1, 's2':0.0}, {'mu_c':1, 'mu_s':1.2, 's2':0.2}] #, {'mu_c':1, 'mu_s':1.2, 's2':0.2}
 
 for i_param, f_param in enumerate(f_params):
@@ -63,7 +57,7 @@ for i_param, f_param in enumerate(f_params):
              'mu_c': f_param['mu_c'],
              'mu_s': f_param['mu_s'],
              'v_s': 1e-3,
-             'alpha': 2,
+             'alpha': 2, # called gamma in paper
              's0': 1e6,
              's1': 8e1,
              's2': f_param['s2'],
@@ -74,19 +68,10 @@ for i_param, f_param in enumerate(f_params):
              'steady_state': False,
              'n_ls': 20}
 
-
-
-        planar_lugre = FullFrictionModel(properties=p)
-        shape_ = surf.PObject(p['grid_size'], p['grid_shape'], shape_set[shape])
-        planar_lugre.update_p_x_y(shape_)
-        cop = planar_lugre.cop
-
-
-
-        fic = cpp.FullFrictionModel()
+        fic = cpp.DistributedFrictionModel()
         fic.init(properties_to_list(p), shape, fn)
+        cop = np.array(fic.get_cop())
 
-        #data_temp = {'x': [], 'y': [], 'tau': []}
         data_temp = {'x': np.zeros(int(num_time_steps/n_skipp)), 'y': np.zeros(int(num_time_steps/n_skipp)), 'tau': np.zeros(int(num_time_steps/n_skipp))}
         i_i = 0
         for i_t in tqdm(range(num_time_steps)):
@@ -116,7 +101,7 @@ for i_param, f_param in enumerate(f_params):
                  'mu_c': f_param['mu_c'],
                  'mu_s': f_param['mu_s'],
                  'v_s': 1e-3,
-                 'alpha': 2,
+                 'alpha': 2, # called gamma in paper
                  's0': 1e6,
                  's1': 8e1,
                  's2': f_param['s2'],
@@ -126,9 +111,6 @@ for i_param, f_param in enumerate(f_params):
                  'elasto_plastic': True,
                  'steady_state': False,
                  'n_ls': 20}
-
-            #fic = cpp.FullFrictionModel()
-            #fic.init(properties_to_list(p), shape, fn)
 
             fic = red_cpp.ReducedFrictionModel()
             start_time = time_.time()
@@ -187,6 +169,8 @@ for i_param, f_param in enumerate(f_params):
         r1, r2, r3 = get_rmse_curve(shape, i_param, n_grids, data, data_base_line)
         ax1.plot(r1, r2, label=shape+" p="+str(i_param), alpha=0.7)
         ax2.plot(r1, r3, label=shape+" p="+str(i_param), alpha=0.7)
+
+
 ax1.legend(loc=1)
 ax1.set_xlabel('N')
 ax1.set_ylabel('rmse$/f_{max}$')

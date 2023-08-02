@@ -1,11 +1,13 @@
+"""
+Plots the ellipse of the limit surface and compared different contact surfaces.
+"""
 import numpy as np
 import seaborn as sns
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from velocity_profiles import vel_num_cells
 import surfaces.surfaces as surf
 import matplotlib as mpl
-from frictionModels.frictionModel import FullFrictionModel
+from frictionModels.frictionModel import DistributedFrictionModel
 from frictionModels.utils import vel_to_cop, update_radius
 
 mpl.rcParams['font.family'] = 'Times New Roman'
@@ -29,7 +31,7 @@ properties = {'grid_shape': (n_cells, n_cells),  # number of grid elements in x 
               'mu_c': 1,
               'mu_s': 1,
               'v_s': 1e-3,
-              'alpha': 2,
+              'alpha': 2, # called gamma in paper
               's0': 1e6,
               's1': 8e1,
               's2': 0,
@@ -42,9 +44,8 @@ properties = {'grid_shape': (n_cells, n_cells),  # number of grid elements in x 
 f, ax = plt.subplots(1, 1, figsize=(6, 4))
 
 markers = [int(n_steps/4), int(n_steps/2), int(3*n_steps/4)]
-
 shape = surf.PObject(properties['grid_size'], properties['grid_shape'], surf.p_circle)
-planar_lugre = FullFrictionModel(properties=properties)
+planar_lugre = DistributedFrictionModel(properties=properties)
 planar_lugre.update_p_x_y(shape)
 ra = update_radius(planar_lugre)
 data = np.zeros((2, n_steps))
@@ -84,8 +85,6 @@ ax.plot(data[0, markers[1]], data[1, markers[1]], 's', alpha=0.7, markersize=7, 
 ax.plot(data[0, markers[2]], data[1, markers[2]], 'v', alpha=0.7, markersize=7, color='cornflowerblue')
 
 
-
-
 for k, (key, value) in enumerate(shapes.items()):
     direction = value[1]
 
@@ -98,7 +97,7 @@ for k, (key, value) in enumerate(shapes.items()):
     data = np.zeros((4, n_steps))
     shape = surf.PObject(properties['grid_size'], properties['grid_shape'], value[0])
 
-    planar_lugre = FullFrictionModel(properties=properties)
+    planar_lugre = DistributedFrictionModel(properties=properties)
     planar_lugre.update_p_x_y(shape)
     cop = planar_lugre.cop
     for i in tqdm(range(n_steps)):

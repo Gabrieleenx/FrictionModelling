@@ -40,6 +40,8 @@ void DistributedFrictionModel::init(pybind11::list py_list, std::string shape_na
 
     std::vector<std::vector<std::vector<double>>> lugre_z(properties.grid_shape[0], std::vector<std::vector<double>>(properties.grid_shape[1], std::vector<double>(int(2), 0.0)));
     lugre.z = lugre_z;
+
+    shape_info_var = p_x_y.get(properties.grid_size);
 }
 
 
@@ -327,6 +329,6 @@ PYBIND11_MODULE(FrictionModelCPPClass, var) {
         .def("init", &DistributedFrictionModel::init)
         .def("step", &DistributedFrictionModel::step)
         .def("get_force_at_cop", &DistributedFrictionModel::get_force_at_cop)
-        .def("set_fn", &DistributedFrictionModel::set_fn);
-
+        .def("set_fn", &DistributedFrictionModel::set_fn)
+        .def("get_cop", &DistributedFrictionModel::get_cop);
 }

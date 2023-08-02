@@ -1,9 +1,10 @@
+"""
+This file test the computational speed of the models without anything unnecessary in the loop to slow it down.
+"""
 import numpy as np
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
-from tqdm import tqdm
 import time
-
 
 dt = 1e-4
 fn = 1
@@ -35,7 +36,7 @@ for iii in range(N):
              'mu_c': 1,
              'mu_s': 1.2,
              'v_s': 1e-3,
-             'alpha': 2,
+             'alpha': 2, # called gamma in paper
              's0': 1e5,
              's1': 2e1,
              's2': 0.2,
@@ -46,7 +47,7 @@ for iii in range(N):
              'steady_state': False,
              'n_ls': 20}
 
-        fic = cpp.FullFrictionModel()
+        fic = cpp.DistributedFrictionModel()
         fic.init(properties_to_list(p), "Square", fn)
         start_time = time.time()
         for i_t in range(num_time_steps):
@@ -70,9 +71,11 @@ for iii in range(N):
         elapsed_time = end_time - start_time
         red_model[iii, i_n_grid] = num_time_steps/elapsed_time
 
+print('n grids ', n_grids)
 
-print('full_model', np.mean(full_model, axis=0))
+print('dist_model [it/s]', np.mean(full_model, axis=0))
 
-print('red_pre', np.mean(red_pre, axis=0))
+print('red_pre [s]', np.mean(red_pre, axis=0))
 
-print('red_model', np.mean(red_model, axis=0))
+print('red_model [it/s] ', np.mean(red_model, axis=0))
+

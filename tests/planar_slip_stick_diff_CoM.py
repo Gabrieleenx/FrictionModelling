@@ -1,13 +1,13 @@
+"""
+This file simulates in-hand stick and slip motion by varying the grip force.
+"""
 import numpy as np
 import seaborn as sns
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
-from animate import Animate
 from frictionModels.utils import vel_to_cop
-import surfaces.surfaces as surf
-from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
 from matplotlib.patches import Rectangle, Circle
 
 import matplotlib as mpl
@@ -18,8 +18,6 @@ mpl.rcParams["mathtext.fontset"] = 'cm'
 mpl.rcParams['axes.xmargin'] = 0
 mpl.rcParams['axes.formatter.limits'] = (-2, 3)
 sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
-
-
 
 dt = 1e-4
 r = 0.01
@@ -33,7 +31,7 @@ p = {'grid_shape': (21, 21),  # number of grid elements in x any
      'mu_c': 1.0,
      'mu_s': 1.2,
      'v_s': 1e-3,
-     'alpha': 2,
+     'alpha': 2, # called gamma in paper
      's0': 1e6,
      's1': 8e1,
      's2': 0.2,
@@ -60,8 +58,7 @@ def move_force_to_point(force_at_cop, pos):
     m = np.cross(-pos, f_t)
     return [force_at_cop[0], force_at_cop[1], force_at_cop[2] + m]
 
-
-class obeject_dynamics(object):
+class object_dynamics(object):
     def __init__(self, h, b, m, dt):
         self.dt = dt
         self.m = m
@@ -94,18 +91,18 @@ class obeject_dynamics(object):
 object_width = 0.15
 object_height = 0.08
 
-object_ = obeject_dynamics(0.15, 0.08, 0.2, dt)
-object_red = obeject_dynamics(0.15, 0.08, 0.2, dt)
-object_fn2 = obeject_dynamics(0.15, 0.08, 0.2, dt)
-object_red_fn2 = obeject_dynamics(0.15, 0.08, 0.2, dt)
+object_ = object_dynamics(0.15, 0.08, 0.2, dt)
+object_red = object_dynamics(0.15, 0.08, 0.2, dt)
+object_fn2 = object_dynamics(0.15, 0.08, 0.2, dt)
+object_red_fn2 = object_dynamics(0.15, 0.08, 0.2, dt)
 
-fic = cpp.FullFrictionModel()
+fic = cpp.DistributedFrictionModel()
 fic.init(properties_to_list(p), shape, 2)
 
 fic_red = red_cpp.ReducedFrictionModel()
 fic_red.init(properties_to_list(p), shape, 2)
 
-fic_fn2 = cpp.FullFrictionModel()
+fic_fn2 = cpp.DistributedFrictionModel()
 fic_fn2.init(properties_to_list(p), shape, 2)
 
 fic_red_fn2 = red_cpp.ReducedFrictionModel()

@@ -1,3 +1,6 @@
+"""
+This file simulates in-hand stick and slip motion by varying the grip force.
+"""
 import numpy as np
 import seaborn as sns
 from tqdm import tqdm
@@ -5,9 +8,7 @@ import matplotlib.pyplot as plt
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
 from frictionModels.utils import vel_to_cop
-
 from matplotlib.patches import Rectangle, Circle
-
 import matplotlib as mpl
 
 mpl.rcParams['font.family'] = 'Times New Roman'
@@ -17,21 +18,19 @@ mpl.rcParams['axes.xmargin'] = 0
 mpl.rcParams['axes.formatter.limits'] = (-2, 3)
 sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
 
-
-
 dt = 1e-4
-r = 0.01 #radius
+r = 0.01
 sim_time = 2
 n = 5
 time_stamps = np.arange(n)/(n-1) * (sim_time)
 shape = 'LineGradX'
-title_ = '--'
+
 p = {'grid_shape': (21, 21),  # number of grid elements in x any
      'grid_size': 2*r / 21,  # the physical size of each grid element
      'mu_c': 1.0,
      'mu_s': 1.2,
      'v_s': 1e-3,
-     'alpha': 2,
+     'alpha': 2, # called gamma in paper
      's0': 1e6,
      's1': 8e1,
      's2': 0.2,
@@ -59,7 +58,7 @@ def move_force_to_point(force_at_cop, pos):
     return [force_at_cop[0], force_at_cop[1], force_at_cop[2] + m]
 
 
-class obeject_dynamics(object):
+class object_dynamics(object):
     def __init__(self, h, b, m, dt):
         self.dt = dt
         self.m = m
@@ -92,18 +91,18 @@ class obeject_dynamics(object):
 object_width = 0.15
 object_height = 0.08
 
-object_ = obeject_dynamics(0.15, 0.08, 0.2, dt)
-object_red = obeject_dynamics(0.15, 0.08, 0.2, dt)
-object_fn2 = obeject_dynamics(0.15, 0.08, 0.2, dt)
-object_red_fn2 = obeject_dynamics(0.15, 0.08, 0.2, dt)
+object_ = object_dynamics(0.15, 0.08, 0.2, dt)
+object_red = object_dynamics(0.15, 0.08, 0.2, dt)
+object_fn2 = object_dynamics(0.15, 0.08, 0.2, dt)
+object_red_fn2 = object_dynamics(0.15, 0.08, 0.2, dt)
 
-fic = cpp.FullFrictionModel()
+fic = cpp.DistributedFrictionModel()
 fic.init(properties_to_list(p), shape, 2)
 
 fic_red = red_cpp.ReducedFrictionModel()
 fic_red.init(properties_to_list(p), shape, 2)
 
-fic_fn2 = cpp.FullFrictionModel()
+fic_fn2 = cpp.DistributedFrictionModel()
 fic_fn2.init(properties_to_list(p), shape, 2)
 
 fic_red_fn2 = red_cpp.ReducedFrictionModel()
@@ -221,9 +220,8 @@ ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspa
 plt.tight_layout(h_pad=0.015)
 plt.show()
 
-#f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(6,5))
-f, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(6,3.8))
-#sns.despine(f)
+f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(6,5))
+#f, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(6,3.8))
 
 ax1.plot(data['t'], data['p_x'], label="$x_1$", alpha=0.7)
 ax1.plot(data['t'], data['p_x_red'], label="$\\bar{x}_1$", alpha=0.7)
@@ -233,7 +231,6 @@ ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelsp
 ax1.get_yaxis().set_label_coords(-0.11,0.5)
 ax1.set_ylabel('Position [m]', fontsize="10" )
 ax1.get_xaxis().set_visible(False)
-#ax1.set_title(title_)
 
 ax2.plot(data['t'], data['p_y'], label="$y_1$", alpha=0.7)
 ax2.plot(data['t'], data['p_y_red'], label="$\\bar{y}_1$", alpha=0.7)
@@ -253,15 +250,15 @@ ax3.get_yaxis().set_label_coords(-0.11,0.5)
 ax3.set_ylabel('Orientation [rad]', fontsize="10" )
 ax3.set_xlabel('Time [s]', fontsize="10")
 
-#ax3.get_xaxis().set_visible(False)
-"""
+ax3.get_xaxis().set_visible(False)
+
 ax4.plot(data['t'], data['fn'], label="$f_{n1}$", alpha=0.7)
 ax4.plot(data['t'], data['fn2'], '--', label="$f_{n2}$", alpha=0.7)
 ax4.set_xlabel('Time [s]', fontsize="10")
 ax4.set_ylabel('Normal force [N]', fontsize="10")
 ax4.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax4.get_yaxis().set_label_coords(-0.11,0.5)
-"""
+
 
 plt.tight_layout(h_pad=0.015)
 plt.show()

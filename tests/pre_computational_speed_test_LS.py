@@ -1,9 +1,7 @@
-import numpy as np
-import frictionModelsCPP.build.FrictionModelCPPClass as cpp
-import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
-from tqdm import tqdm
-import time
 
+import numpy as np
+import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
+import time
 
 dt = 1e-4
 fn = 1
@@ -55,6 +53,6 @@ for iii in range(N):
         red_pre[iii, i_n_ls] = elapsed_time
 
 
-
-print('red_pre', np.mean(red_pre, axis=0))
+print('n_ls', n_ls)
+print('red_pre [s]', np.mean(red_pre, axis=0))
 

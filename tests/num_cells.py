@@ -1,3 +1,6 @@
+"""
+This file test how fast the distributed model converges with increased resolution of the contact surface.
+"""
 import numpy as np
 import seaborn as sns
 from tqdm import tqdm
@@ -5,10 +8,10 @@ import matplotlib.pyplot as plt
 import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 from velocity_profiles import vel_num_cells
 import matplotlib as mpl
-from frictionModels.frictionModel import FullFrictionModel, ReducedFrictionModel
 import surfaces.surfaces as surf
-shape_set = {'Square': surf.p_square, 'Circle': surf.p_circle, 'Line': surf.p_line, 'LineGrad': surf.p_line_grad}
 from frictionModels.utils import vel_to_cop
+
+shape_set = {'Square': surf.p_square, 'Circle': surf.p_circle, 'Line': surf.p_line, 'LineGrad': surf.p_line_grad}
 
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['font.serif'] = ['Times New Roman'] + mpl.rcParams['font.serif']
@@ -28,9 +31,7 @@ time = []
 data_vel = {'x':[], 'y':[], 'tau':[]}
 data_base_line = {}
 data = {}
-
 contact_size = 0.02
-
 
 def properties_to_list(prop):
     list_ = []
@@ -44,12 +45,9 @@ def properties_to_list(prop):
 
 
 shapes = ['Square', 'Circle', 'LineGrad']
-
-
 n_grids = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35]
-#n_grids = [5, 7]
 
-f_params = [{'mu_c':1, 'mu_s':1, 's2':0.0}, {'mu_c':1, 'mu_s':1.2, 's2':0.2}] #, {'mu_c':1, 'mu_s':1.2, 's2':0.2}
+f_params = [{'mu_c':1, 'mu_s':1, 's2':0.0}, {'mu_c':1, 'mu_s':1.2, 's2':0.2}]
 
 for i_param, f_param in enumerate(f_params):
     for i_shape, shape in enumerate(shapes):
@@ -58,7 +56,7 @@ for i_param, f_param in enumerate(f_params):
              'mu_c': f_param['mu_c'],
              'mu_s': f_param['mu_s'],
              'v_s': 1e-3,
-             'alpha': 2,
+             'alpha': 2, # called gamma in paper
              's0': 1e6,
              's1': 8e1,
              's2': f_param['s2'],
@@ -68,13 +66,9 @@ for i_param, f_param in enumerate(f_params):
              'elasto_plastic': True,
              'steady_state': False}
 
-        planar_lugre = FullFrictionModel(properties=p)
-        shape_ = surf.PObject(p['grid_size'], p['grid_shape'], shape_set[shape])
-        planar_lugre.update_p_x_y(shape_)
-        cop = planar_lugre.cop
-
-        fic = cpp.FullFrictionModel()
+        fic = cpp.DistributedFrictionModel()
         fic.init(properties_to_list(p), shape, fn)
+        cop = np.array(fic.get_cop())
 
         data_temp = {'x': [], 'y': [], 'tau': []}
 
@@ -110,7 +104,7 @@ for i_param, f_param in enumerate(f_params):
                  'elasto_plastic': True,
                  'steady_state': False}
 
-            fic = cpp.FullFrictionModel()
+            fic = cpp.DistributedFrictionModel()
             fic.init(properties_to_list(p), shape, fn)
 
             data_temp = {'x':[], 'y':[], 'tau':[]}
@@ -168,6 +162,7 @@ for i_param, f_param in enumerate(f_params):
         r1, r2, r3 = get_rmse_curve(shape, i_param, n_grids, data, data_base_line)
         ax1.plot(r1, r2, label=shape+" p="+str(i_param), alpha=0.7)
         ax2.plot(r1, r3, label=shape+" p="+str(i_param), alpha=0.7)
+
 ax1.legend(loc=1)
 ax1.set_xlabel('N')
 ax1.set_ylabel('rmse$/f_{max}$')
@@ -210,19 +205,10 @@ ax1.get_yaxis().set_label_coords(-0.11,0.5)
 ax1.set_ylabel('RMSE$/||\mathbf{f}_{t\max}||_2$', fontsize="10" )
 ax1.get_xaxis().set_visible(False)
 
-#ax1.legend(loc=1)
-#ax1.set_xlabel('N')
-#ax1.set_ylabel('rmse$/f_{max}$')
-#ax1.set_title('Tangential friction force')
 ax2.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax2.get_yaxis().set_label_coords(-0.11,0.5)
 ax2.set_ylabel('RMSE$/\\tau_{\max}$', fontsize="10")
 ax2.set_xlabel('N')
-
-#ax2.legend(loc=1)
-#ax2.set_xlabel('N')
-#ax2.set_ylabel('rmse$/\\tau_{max}$')
-#ax2.set_title('Rotational friction force')
 
 plt.tight_layout(h_pad=0.015)
 plt.show()

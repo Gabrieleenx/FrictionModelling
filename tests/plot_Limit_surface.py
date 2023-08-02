@@ -1,11 +1,13 @@
-
+"""
+This file plots the limit surface
+"""
 import numpy as np
 import seaborn as sns
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import surfaces.surfaces as surf
 import matplotlib as mpl
-from frictionModels.frictionModel import FullFrictionModel
+from frictionModels.frictionModel import DistributedFrictionModel
 from frictionModels.utils import vel_to_cop
 
 mpl.rcParams['font.family'] = 'Times New Roman'
@@ -14,8 +16,6 @@ mpl.rcParams["mathtext.fontset"] = 'cm'
 mpl.rcParams['axes.xmargin'] = 0
 mpl.rcParams['axes.formatter.limits'] = (-2, 3)
 sns.set_theme("paper", "ticks", font_scale=1.5, rc={"lines.linewidth": 2})
-
-
 
 contact_size = 0.02
 n_cells = 21
@@ -38,7 +38,7 @@ properties = {'grid_shape': (n_cells, n_cells),  # number of grid elements in x 
               'steady_state': True}
 
 shape = surf.PObject(properties['grid_size'], properties['grid_shape'], surf.p_line_grad)
-planar_lugre = FullFrictionModel(properties=properties)
+planar_lugre = DistributedFrictionModel(properties=properties)
 planar_lugre.update_p_x_y(shape)
 
 num = 20

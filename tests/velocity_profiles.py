@@ -1,5 +1,7 @@
+"""
+This file just contains some velocity profiles.
+"""
 import numpy as np
-
 
 def vel_gen_1(t):
     vel = {'x': 0.01, 'y': 0, 'tau': 3}
