@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/distributedModel.cpp
+distributedModel.h
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/distributedModel.h
+iostream
+-
+algorithm
+-
+
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/distributedModel.h
+vector
+-
+utils.h
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/utils.h
+pybind11/pybind11.h
+-
+pybind11/stl.h
+-
+
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/utils.h
+string
+-
+vector
+-
+

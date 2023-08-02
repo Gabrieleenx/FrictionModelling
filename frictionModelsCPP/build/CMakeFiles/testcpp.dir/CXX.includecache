@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/utils.cpp
+iostream
+-
+cmath
+-
+array
+-
+unordered_map
+-
+vector
+-
+

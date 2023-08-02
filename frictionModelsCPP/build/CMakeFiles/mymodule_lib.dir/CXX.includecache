@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/utils.cpp
+utils.h
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/utils.h
+cmath
+-
+stdexcept
+-
+iostream
+-
+algorithm
+-
+
+/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/utils.h
+string
+-
+vector
+-
+

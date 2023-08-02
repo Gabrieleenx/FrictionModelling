@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -O2 -flto -shared -Wl,-soname,ReducedFrictionModelCPPClass.cpython-310-x86_64-linux-gnu.so -o ReducedFrictionModelCPPClass.cpython-310-x86_64-linux-gnu.so CMakeFiles/ReducedFrictionModelCPPClass.dir/reducedModel.cpp.o  -Wl,-rpath,/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/build libmymodule_lib.so libmymodule_lib2.so 

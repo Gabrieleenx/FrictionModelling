@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -flto -shared  -o FrictionModelCPP.cpython-310-x86_64-linux-gnu.so CMakeFiles/FrictionModelCPP.dir/main.cpp.o 

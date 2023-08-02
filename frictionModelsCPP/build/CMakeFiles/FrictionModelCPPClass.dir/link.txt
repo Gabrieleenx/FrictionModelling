@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -O2 -flto -shared -Wl,-soname,FrictionModelCPPClass.cpython-310-x86_64-linux-gnu.so -o FrictionModelCPPClass.cpython-310-x86_64-linux-gnu.so CMakeFiles/FrictionModelCPPClass.dir/distributedModel.cpp.o  -Wl,-rpath,/home/gabriel/Documents/projects/FrictionModelling/frictionModelsCPP/build libmymodule_lib.so 
