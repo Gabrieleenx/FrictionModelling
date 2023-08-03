@@ -2,6 +2,7 @@
 
 This repository is the code developed for the paper "Planar Friction Modelling with LuGre Dynamics and Limit Surfaces", 
 which is currently in submission to IEEE Transactions on Robotics (T-RO). The paper is currently available in arXiv at:
+http://arxiv.org/abs/2308.01123
 . If you use this work, please cite the paper. 
 
 ## Dependencies 
