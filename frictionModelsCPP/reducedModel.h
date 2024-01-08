@@ -28,7 +28,7 @@ class PreCompute{
 
     public:
         PreCompute(){};
-
+        void update_surface(std::vector<double> new_surf, std::string shape_name, double fn);
         std::vector<double> get_bilinear_interpolation(utils::vec vel, double ra_);
         
         std::vector<double> calc_skew_var(utils::vec vel_at_cop, double ra_);
@@ -47,8 +47,10 @@ class PreCompute{
 class ReducedFrictionModel{
     private:
         double ra;
+        double N_LS;
         std::vector<double> viscus_scale;
         std::vector<double> force_vec_cop;
+        std::vector<double> force_at_center;
 
         utils::vec velocity;
         utils::P_x_y p_x_y;
@@ -67,9 +69,11 @@ class ReducedFrictionModel{
         ReducedFrictionModel(){};
         void init(pybind11::list py_list, std::string shape_name, double fn);
         std::vector<double> step(pybind11::list py_list);
+        std::vector<double> step_ode(pybind11::list py_y, pybind11::list py_vel);
         std::vector<double> get_force_at_cop();
+        std::vector<double> get_force_at_center();
+        std::vector<double> get_cop();
         void set_fn(double fn){p_x_y.set_fn(fn);};
-
-
+        void update_surface(pybind11::list py_list, std::string shape_name, double fn, int recalc);
 };
 

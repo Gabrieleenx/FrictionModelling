@@ -23,7 +23,7 @@ sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
 
 n_skipp = 10
 sim_time = 5
-dt = 1e-4
+dt = 1e-5
 fn = 1
 n_baseline = 101
 num_time_steps = int(sim_time/dt)
@@ -58,11 +58,11 @@ for i_param, f_param in enumerate(f_params):
              'v_s': 1e-3,
              'alpha': 2, # called gamma in paper
              's0': 1e6,
-             's1': 8e1,
+             's1': 8e2,
              's2': f_param['s2'],
              'dt': dt,
              'z_ba_ratio': 0.9,
-             'stability': True,
+             'stability': False,
              'elasto_plastic': True,
              'steady_state': False}
 
@@ -96,11 +96,11 @@ for i_param, f_param in enumerate(f_params):
                  'v_s': 1e-3,
                  'alpha': 2,
                  's0': 1e6,
-                 's1': 8e1,
+                 's1': 8e2,
                  's2': f_param['s2'],
                  'dt': dt,
                  'z_ba_ratio': 0.9,
-                 'stability': True,
+                 'stability': False,
                  'elasto_plastic': True,
                  'steady_state': False}
 
@@ -202,7 +202,7 @@ for i_param, f_param in enumerate(f_params):
 
 ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax1.get_yaxis().set_label_coords(-0.11,0.5)
-ax1.set_ylabel('RMSE$/||\mathbf{f}_{t\max}||_2$', fontsize="10" )
+ax1.set_ylabel('RMSE$/||\mathbf{f}_{t\max}||$', fontsize="10" )
 ax1.get_xaxis().set_visible(False)
 
 ax2.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")

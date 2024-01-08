@@ -28,8 +28,8 @@ properties = {'grid_shape': (n_cells, n_cells),  # number of grid elements in x 
               'mu_s': 1,
               'v_s': 1e-3,
               'alpha': 2,
-              's0': 1e5,
-              's1': 2e1,
+              's0': 1e6,
+              's1': 8e2,
               's2': 0,
               'dt': 1e-4,
               'z_ba_ratio': 0.9,
@@ -94,6 +94,7 @@ ax.view_init(elev=20, azim=69, roll=0)
 
 # Set the limits of the axes
 plt.tight_layout()
+#plt.subplots_adjust(left=-0.0, right=0.86, top=1, bottom=0)
 
 plt.show()
 

@@ -31,11 +31,11 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               'v_s': 1e-3,
               'alpha': 2, # called gamma in paper
               's0': 1e6,
-              's1': 8e1,
+              's1': 8e2,
               's2': 0,
               'dt': 1e-4,
               'z_ba_ratio': 0.9,
-              'stability': True,
+              'stability': False,
               'elasto_plastic': True,
               'steady_state': True,
               'n_ls': 20}
@@ -60,9 +60,13 @@ n_steps = int(time / properties['dt'])
 planar_lugre = DistributedFrictionModel(properties=properties)
 planar_lugre.update_p_x_y(shape)
 
-# get cop location
-cop = planar_lugre.cop
+planar_lugre_bl = DistributedFrictionModel(properties=properties)
+planar_lugre_bl.update_p_x_y(shape)
 
+# get cop location
+planar_lugre.cop = np.zeros(2)
+cop = planar_lugre.cop
+print(cop)
 # initialize data collection
 data_vel = np.zeros((4, n_steps))  # t, vx, vy, v_tau
 data_full = np.zeros((4, n_steps))  # t, fx, fy, f_tau
@@ -95,10 +99,10 @@ for i in tqdm(range(n_steps)):
 # plotting
 
 f, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 3))
-ax1.plot(data_full[0, :], data_full[1, :], alpha=0.7, label='$f_x$')
-ax1.plot(data_full[0, :], data_full[2, :], alpha=0.7, label='$f_y$')
-ax1.plot(data_full_bilinear[0, :], data_full_bilinear[1, :], '--', alpha=1, label='$f_x$ b-l')
-ax1.plot(data_full_bilinear[0, :], data_full_bilinear[2, :], '--', alpha=1, label='$f_y$ b-l')
+ax1.plot(data_full[0, :], data_full[1, :], alpha=0.7, label='$f_{d,x}$')
+ax1.plot(data_full[0, :], data_full[2, :], alpha=0.7, label='$f_{d,y}$')
+ax1.plot(data_full_bilinear[0, :], data_full_bilinear[1, :], '--', alpha=1, label='$f_{d,x}$ b-l')
+ax1.plot(data_full_bilinear[0, :], data_full_bilinear[2, :], '--', alpha=1, label='$f_{d,y}$ b-l')
 ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax1.get_yaxis().set_label_coords(-0.11,0.5)
 ax1.set_ylabel('Force [N]', fontsize="10" )
@@ -107,8 +111,8 @@ ax1.get_xaxis().set_visible(False)
 # Make the zoom-in plot:
 
 axins = zoomed_inset_axes(ax1, 4, loc=3) # zoom = 2
-axins.plot(data_full[0, :], data_full[1, :], alpha=0.7, label='$f_x$')
-axins.plot(data_full_bilinear[0, :], data_full_bilinear[1, :], '--', alpha=1, label='$f_x$ b-l')
+axins.plot(data_full[0, :], data_full[1, :], alpha=0.7, label='$f_{d,x}$')
+axins.plot(data_full_bilinear[0, :], data_full_bilinear[1, :], '--', alpha=1, label='$f_{d,x}$ b-l')
 
 axins.set_xlim(1.85, 2.05)
 axins.set_ylim(-0.7, -0.5)
@@ -126,16 +130,16 @@ plt.tick_params(
 mark_inset(ax1, axins, loc1=1, loc2=4, fc="none", ec="0.5")
 
 
-ax2.plot(data_full[0, :], data_full[3, :], label='$\\tau$')
-ax2.plot(data_full_bilinear[0, :], data_full_bilinear[3, :], '--' ,label='$\\tau$ b-l')
+ax2.plot(data_full[0, :], data_full[3, :], label='$\\tau_d$')
+ax2.plot(data_full_bilinear[0, :], data_full_bilinear[3, :], '--' ,label='$\\tau_d$ b-l')
 
 ax2.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax2.get_yaxis().set_label_coords(-0.11,0.5)
-ax2.set_ylabel('Torque [Nm]', fontsize="10" )
+ax2.set_ylabel('Torque [Nm]', fontsize="10")
 
 axins = zoomed_inset_axes(ax2, 4, loc=2) # zoom = 2
-axins.plot(data_full[0, :], data_full[3, :], label='$\\tau$')
-axins.plot(data_full_bilinear[0, :], data_full_bilinear[3, :], '--' ,label='$\\tau$ b-l')
+axins.plot(data_full[0, :], data_full[3, :], label='$\\tau_d$')
+axins.plot(data_full_bilinear[0, :], data_full_bilinear[3, :], '--' ,label='$\\tau_d$ b-l')
 
 axins.set_xlim(1.85, 2.05)
 axins.set_ylim(-0.003, -0.002)

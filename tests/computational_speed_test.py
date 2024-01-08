@@ -11,7 +11,9 @@ fn = 1
 sim_time = 1
 N = 1
 contact_size = 0.02
-n_grids = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 101]
+#n_grids = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 101]
+n_grids = [5, 9, 13, 17, 21, 25, 29, 33]
+
 num_time_steps = int(sim_time/dt)
 
 full_model = np.zeros((N, len(n_grids)))
@@ -42,7 +44,7 @@ for iii in range(N):
              's2': 0.2,
              'dt': dt,
              'z_ba_ratio': 0.9,
-             'stability': True,
+             'stability': False,
              'elasto_plastic': True,
              'steady_state': False,
              'n_ls': 20}

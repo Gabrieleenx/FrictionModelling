@@ -4,6 +4,7 @@ This file test the change of contact size for the reduced model without the need
 import surfaces.surfaces as surf
 import matplotlib as mpl
 from frictionModels.frictionModel import ReducedFrictionModel
+from frictionModels.frictionModel import DistributedFrictionModel
 
 mpl.rcParams['font.family'] = 'Times New Roman'
 mpl.rcParams['font.serif'] = ['Times New Roman'] + mpl.rcParams['font.serif']

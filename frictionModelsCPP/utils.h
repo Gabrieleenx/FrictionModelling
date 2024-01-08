@@ -11,6 +11,32 @@ namespace utils {
         double tau;
     };
 
+    struct jac_input {
+        double z_x;
+        double z_y;
+        double z_tau;
+        double v_x;
+        double v_y;
+        double omega;
+        double s0;
+        double s1;
+        double s2;
+        double mu_c;
+        double mu_s;
+        double vs;
+        double gamma;
+        double fn;
+        double px;
+        double py;
+        double beta;
+        double cop_x;
+        double cop_y;
+        double ra;
+        double sx;
+        double sy;
+        double u;
+    };
+
     struct properties
     {            
         std::vector<int> grid_shape; // [x, y]
@@ -32,12 +58,16 @@ namespace utils {
     struct lugre
     {
         std::vector<std::vector<std::vector<double>>> z; // [shape x, shape y, 2]
+        std::vector<std::vector<std::vector<double>>> dz; 
+        std::vector<std::vector<double>> beta; 
         std::vector<std::vector<std::vector<double>>> f; // [shape x, shape y, 2]
     };
     
     struct lugre_red
     {
+        double beta; 
         std::vector<double> z; // [shape x, shape y, 2]
+        std::vector<double> dz; // [shape x, shape y, 2]
         std::vector<double> f; // [shape x, shape y, 2]
     };
       
@@ -54,6 +84,7 @@ namespace utils {
     struct shape_info_red {
         double fn;
         std::vector<double> cop; // [x,y]
+        std::vector<double> s_x_y; // [x,y]
         std::vector<double> cop_norm; // [x,y]
     };
 
@@ -86,6 +117,7 @@ namespace utils {
             void update_shape_info();
         public:
             P_x_y(){};
+            void update_shape_info(std::string shape_name_, std::vector<double> surface_p);
             void init(std::string shape_name_, double grid_size_, std::vector<int> grid_shape_, double fn);
             void set_shape(std::string shape_name_);
             void set_fn(double fn);
@@ -94,6 +126,9 @@ namespace utils {
             shape_info_red get_red(double size_);
     };
 
+    std::vector<double> lugre_jac_2D(jac_input p);
+
+    std::vector<double> lugre_jac_red(jac_input p);
 
     double shape_function(std::string shape_name, int ix, int iy, std::vector<int> grid_shape);
     

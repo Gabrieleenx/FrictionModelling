@@ -65,7 +65,6 @@ class CustomHashList3D(object):
         :return: np.array (3,)
         """
         vel_cop = vel_to_cop(cop, vel)
-
         f1, f2, f3, f4, dr, di = self.get_closest_samples(vel_cop, ra)
 
         s1 = (1-dr)*(1-di)
@@ -76,6 +75,10 @@ class CustomHashList3D(object):
         ls_x = s1*f1['x'] + s2*f2['x'] + s3*f3['x'] + s4*f4['x']
         ls_y = s1 * f1['y'] + s2 * f2['y'] + s3 * f3['y'] + s4 * f4['y']
         ls_tau = s1 * f1['tau'] + s2 * f2['tau'] + s3 * f3['tau'] + s4 * f4['tau']
+        if np.sign(vel['tau']) == -1:
+            ls_tau = -ls_tau
+            ls_x = -ls_x
+            ls_y = -ls_y
 
         return np.array([[ls_x], [ls_y], [ls_tau]])
 
@@ -229,6 +232,7 @@ def elasto_plastic_beta(z, z_ss, z_ba_r, v):
     """
     z_norm = np.linalg.norm(z)
     z_max = np.linalg.norm(z_ss)
+
     z_ba = z_ba_r * z_max
 
     if z_norm <= z_ba:
@@ -238,12 +242,11 @@ def elasto_plastic_beta(z, z_ss, z_ba_r, v):
     else:
         beta = 1
     v_norm = np.linalg.norm(v)
-    if v_norm != 0 and z_norm != 0:
-        v_unit = v / v_norm
-        z_unit = z / z_norm
-        c = v_unit.dot(z_unit)
-        eps = (c + 1) / 2
-        beta = eps * beta
+    v_unit = v / (v_norm+1e-10)
+    z_unit = z / (z_norm+1e-10)
+    c = v_unit.dot(z_unit)
+    eps = (c + 1) / 2
+    beta = eps * beta
 
     return beta
 
@@ -310,4 +313,25 @@ def vel_to_cop(cop, vel_vec):
     return {'x': v_x, 'y': v_y, 'tau': v_tau}
 
 
+def vel_to_point(cop, vel_vec):
+    """
+    Move velocity to cop
+    :param cop: np.array([x, y])
+    :param vel_vec: {'x': v_x, 'y': v_y, 'tau': v_tau}
+    :return: {'x': v_x, 'y': v_y, 'tau': v_tau}
+    """
+    u = np.array([0, 0, 1])
+    w = vel_vec[2] * u
+    pos_vex = np.zeros(3)
+    pos_vex[0:2] = cop
+    v_tau = np.cross(w, pos_vex)
 
+    v_x = vel_vec[0] + v_tau[0]
+    v_y = vel_vec[1] + v_tau[1]
+    v_tau = vel_vec[2]
+    return [v_x, v_y, v_tau]
+
+def move_force_to_point(force_at_cop, pos):
+    f_t = np.array([force_at_cop[0], force_at_cop[1]])
+    m = np.cross(-pos, f_t)
+    return [force_at_cop[0], force_at_cop[1], force_at_cop[2] + m]

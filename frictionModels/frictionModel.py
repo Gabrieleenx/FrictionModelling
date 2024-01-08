@@ -32,11 +32,15 @@ class FrictionBase(object):
         self.fn = 0
         self.x_pos_vec = self.get_pos_vector(0)
         self.y_pos_vec = self.get_pos_vector(1)
+
         self.pos_matrix, self.pos_matrix_2d = self.get_pos_matrix()
         self.force_at_cop = None
 
     def get_pos_vector(self, i):
-        return (np.arange(self.p['grid_shape'][i]) + 0.5 - self.p['grid_shape'][i] / 2) * self.p['grid_size']
+        sgn = 1
+        if i == 1:
+            sgn = -1
+        return sgn*(np.arange(self.p['grid_shape'][i]) + 0.5 - self.p['grid_shape'][i] / 2) * self.p['grid_size']
 
     def get_pos_matrix(self):
         pos_matrix = np.zeros((self.p['grid_shape'][0], self.p['grid_shape'][1], 3))
@@ -47,8 +51,8 @@ class FrictionBase(object):
                 pos_matrix[i_x, i_y, 1] = self.y_pos_vec[i_y]
 
         pos_matrix_2d = np.zeros((2, self.p['grid_shape'][0], self.p['grid_shape'][1]))
-        pos_matrix_2d[0, :, :] = pos_matrix[:, :, 0]
-        pos_matrix_2d[1, :, :] = pos_matrix[:, :, 1]
+        pos_matrix_2d[0, :, :] = pos_matrix[:, :, 0].T
+        pos_matrix_2d[1, :, :] = pos_matrix[:, :, 1].T
         return pos_matrix, pos_matrix_2d
 
     def update_cop_and_force_grid(self, p_x_y):
@@ -56,8 +60,8 @@ class FrictionBase(object):
         self.normal_force_grid = p_x_y(self.pos_matrix_2d)
         self.normal_force_grid = self.normal_force_grid * area
         self.fn = np.sum(self.normal_force_grid)
-        self.cop[0] = np.sum(self.x_pos_vec.dot(self.normal_force_grid)) / self.fn
-        self.cop[1] = np.sum(self.y_pos_vec.dot(self.normal_force_grid.T)) / self.fn
+        self.cop[0] = np.sum(self.x_pos_vec.dot(self.normal_force_grid.T)) / self.fn
+        self.cop[1] = np.sum(self.y_pos_vec.dot(self.normal_force_grid)) / self.fn
 
     def move_force_to_center(self, force_at_cop):
         f_t = np.array([force_at_cop['x'], force_at_cop['y']])
@@ -220,8 +224,8 @@ class DistributedFrictionModel(FrictionBase):
         u = np.array([0, 0, 1])
         w = vel_vec['tau'] * u
         v_tau = np.cross(w, self.pos_matrix)
-        self.velocity_grid[0, :, :] = v_tau[:, :, 0] + vel_vec['x']
-        self.velocity_grid[1, :, :] = v_tau[:, :, 1] + vel_vec['y']
+        self.velocity_grid[0, :, :] = v_tau[:, :, 0].T + vel_vec['x']
+        self.velocity_grid[1, :, :] = v_tau[:, :, 1].T + vel_vec['y']
 
     def initialize_lugre(self):
         """
@@ -256,11 +260,10 @@ class DistributedFrictionModel(FrictionBase):
             delta_z = (z_ss - self.lugre['z']) / self.p['dt']
             dz = np.min([abs(dz), abs(delta_z)], axis=0) * np.sign(dz)
 
-        self.lugre['z'] += dz * self.p['dt']
-
         self.lugre['f'] = (self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
                            self.p['s2'] * self.velocity_grid) * self.normal_force_grid
         self.lugre['dz'] = dz
+        self.lugre['z'] += dz * self.p['dt']
 
     def steady_state_z(self, v_norm, g):
         """
@@ -311,7 +314,7 @@ class DistributedFrictionModel(FrictionBase):
         :return: time derivative of y
         """
         shape_ = self.lugre['z'].shape
-        self.lugre['z'] = np.reshape(y, shape_)
+        self.lugre['z'] = np.reshape(y, shape_).copy()
         vel_vec = {'x': vel[0], 'y': vel[1], 'tau': vel[2]}
         f = self.step_single_point(vel_vec)
         dy = self.lugre['dz']
@@ -349,6 +352,8 @@ class ReducedFrictionModel(FrictionBase):
         """
         self.p_x_y.set_fn(fn)
 
+    def get_cop(self):
+        return self.cop
     def step(self, vel_vec: Dict[str, float]) -> Dict[str, float]:
         """
         This function does one time step of the friction model
@@ -401,6 +406,8 @@ class ReducedFrictionModel(FrictionBase):
         # viscus scale
         self.viscous_scale = update_viscus_scale(self.distributed_model, self.ra, self.cop)
         # self.update_cop_and_force_grid(p_x_y)
+        p, self.cop, self.fn = self.p_x_y.get(self.p['grid_size'])
+
 
     def update_pre_compute(self):
         """
@@ -419,15 +426,17 @@ class ReducedFrictionModel(FrictionBase):
         h = self.limit_surface.get_bilinear_interpolation(vel_cop, self.ra)
         vx0 = self.ra*omega*h[0,0]
         vy0 = self.ra*omega*h[1,0]
+
         vx = vx0
         vy = vy0
         while np.linalg.norm([h[0,0], h[1,0]]) > 1e-6:
             vel_cop = {'x': vx, 'y': vy, 'tau': omega}
             h = self.limit_surface.get_bilinear_interpolation(vel_cop, self.ra)
-            if vx0 != 0:
+            if abs(vx0) > 1e-12:
                 vx = vx*(self.ra * omega * h[0,0] + vx0)/vx0
-            if vy0 != 0:
+            if abs(vy0) > 1e-12:
                 vy = vy*(self.ra * omega * h[1,0] + vy0)/vy0
+
         self.delta_x = -vy/omega
         self.delta_y = vx / omega
 
@@ -442,16 +451,17 @@ class ReducedFrictionModel(FrictionBase):
 
         A = np.eye(3)
         A[2, 2] = self.ra**2
-        sx, sy = self.calc_skew_variables(vel_cop)
-        A[0,2] = sx
-        A[1,2] = sy
+        if self.ls_active:
+            sx, sy = self.calc_skew_variables(vel_cop)
+            A[0, 2] = sx
+            A[1, 2] = sy
         A_sym = (A.T + A)/2
         v_n = np.sqrt(vel_cop_list.T.dot(A_sym).dot(vel_cop_list))
 
         if self.ls_active:
             h = self.limit_surface.get_bilinear_interpolation(vel_cop, self.ra)
-
-            w_vn = np.sign(np.diag(A.dot(vel_cop_list).flatten())).dot(S).dot(np.abs(h))*v_n
+            w_vn = -S.dot(h) * v_n
+            #w_vn = np.sign(np.diag(A.dot(vel_cop_list).flatten())).dot(S).dot(np.abs(h))*v_n
         else:
             w_vn = A.dot(vel_cop_list)
 
@@ -482,12 +492,13 @@ class ReducedFrictionModel(FrictionBase):
             delta_z = (z_ss - z) / self.p['dt']
 
             dz = np.min([abs(dz), abs(delta_z)], axis=0) * np.sign(dz)
-        self.lugre['z'] += dz * self.p['dt']
+
 
         f = -(self.p['s0'] * self.lugre['z'] + self.p['s1'] * dz +
               self.viscous_scale * self.p['s2'] * A.dot(vel_cop_list)) * self.fn
         self.lugre['f'] = f
         self.lugre['dz'] = dz
+        self.lugre['z'] += dz * self.p['dt']
 
     def calc_skew_variables(self, vel_cop):
         """
@@ -504,7 +515,7 @@ class ReducedFrictionModel(FrictionBase):
             p_x_n = 0
             p_y_n = 0
         nn = np.linalg.norm([vel_cop['x'] * p_x_n, vel_cop['y'] * p_y_n])
-        s_n = (2*np.arctan2(self.ra * abs(vel_cop['tau']), nn))/np.pi
+        s_n =  (2*np.arctan2(self.ra * abs(vel_cop['tau']), nn))/np.pi
         sx = -self.ra/ras * s_n * self.delta_y
         sy = self.ra/ras * s_n * self.delta_x
         return sx, sy
@@ -519,7 +530,7 @@ class ReducedFrictionModel(FrictionBase):
         :return: time derivative of y
         """
         shape_ = self.lugre['z'].shape
-        self.lugre['z'] = np.reshape(y, shape_)
+        self.lugre['z'] = np.reshape(y, shape_).copy()
         vel_vec = {'x': vel[0], 'y': vel[1], 'tau': vel[2]}
         f = self.step(vel_vec)
         dy = self.lugre['dz']

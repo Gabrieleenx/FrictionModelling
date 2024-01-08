@@ -39,7 +39,7 @@ for iii in range(N):
              's2': 0.2,
              'dt': dt,
              'z_ba_ratio': 0.9,
-             'stability': True,
+             'stability': False,
              'elasto_plastic': True,
              'steady_state': False,
              'n_ls': n_ls_}

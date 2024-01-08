@@ -42,13 +42,57 @@ void utils::P_x_y::update_shape_info(){
     for (int i = 0; i < new_grid.size(); i++) {
         for (int j = 0; j < new_grid[i].size(); j++) {
             x_pos = (i + 0.5 - n_row/2.0)*grid_size;
-            y_pos = (j + 0.5 - n_col/2.0)*grid_size;
+            y_pos = -(j + 0.5 - n_col/2.0)*grid_size;
+            cop_x += x_pos * new_grid[i][j];
+            cop_y += y_pos * new_grid[i][j];
+        }
+    }
+    std::vector<double> cop_=  {cop_x, cop_y};
+    shape_info_var.cop_norm = cop_;
+
+}
+
+void utils::P_x_y::update_shape_info(std::string shape_name_, std::vector<double> surface_p){
+    // surface_p = [f_00, f_10, ... f_n0, f_01...], f_xy
+    shape_name = shape_name_;
+    
+    uint n_row = grid_shape[0];
+    uint n_col = grid_shape[1];
+
+    std::vector<std::vector<double>> new_grid(grid_shape[0], std::vector<double>(grid_shape[1], 0.0));
+
+    double area = std::pow(grid_size, 2);
+    double fn_new = 0;
+    int idx;
+    for (int ix = 0; ix < new_grid.size(); ix++) {
+        for (int iy = 0; iy < new_grid[ix].size(); iy++) {
+            idx = ix + iy*new_grid[ix].size();
+            new_grid[ix][iy] = area * surface_p[idx];
+            fn_new += new_grid[ix][iy];
+        }
+
+    }
+    
+    utils::multiply(new_grid, 1/fn_new);
+
+    shape_info_var.f_n_grid_norm.assign(new_grid.begin(), new_grid.end());
+
+    double cop_x = 0;
+    double cop_y = 0;
+    double x_pos;
+    double y_pos;
+
+    for (int i = 0; i < new_grid.size(); i++) {
+        for (int j = 0; j < new_grid[i].size(); j++) {
+            x_pos = (i + 0.5 - n_row/2.0)*grid_size;
+            y_pos = -(j + 0.5 - n_col/2.0)*grid_size;
             cop_x += x_pos * new_grid[i][j];
             cop_y += y_pos * new_grid[i][j];
         }
     }
 
-    shape_info_var.cop_norm.insert(shape_info_var.cop_norm.begin(), {cop_x, cop_y});
+    std::vector<double> cop_=  {cop_x, cop_y};
+    shape_info_var.cop_norm = cop_;
 }
 
 void utils::P_x_y::set_shape(std::string shape_name_){
@@ -104,7 +148,7 @@ double utils::shape_function(std::string shape_name, int ix, int iy, std::vector
     if (shape_name == "LineGrad"){
         if (grid_shape[0]/2.0 == int(grid_shape[0]/2.0)){
             if (ix == int(grid_shape[0]/2.0) || ix == int(grid_shape[0]/2.0) -1){
-                pressure = double(iy)/grid_shape[1];
+                pressure = 1-double(iy)/grid_shape[1];
             }else
             {
                 pressure = 0;
@@ -112,7 +156,7 @@ double utils::shape_function(std::string shape_name, int ix, int iy, std::vector
             
         }else{
             if (ix == int(grid_shape[0]/2.0)){
-                pressure = double(iy)/grid_shape[1];
+                pressure = 1-double(iy)/grid_shape[1];
             }else
             {
                 pressure = 0;
@@ -244,4 +288,6 @@ std::vector<double> utils::negate_vector(const std::vector<double>& vec){
     }
     return neg_vec;
 }
+
+
 

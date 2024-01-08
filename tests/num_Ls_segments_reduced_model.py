@@ -23,7 +23,7 @@ sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
 
 n_skipp = 10
 sim_time = 5
-dt = 1e-4
+dt = 1e-5
 fn = 1
 n_baseline = 100
 n_grid = 21
@@ -59,12 +59,12 @@ for i_param, f_param in enumerate(f_params):
              'mu_s': f_param['mu_s'],
              'v_s': 1e-3,
              'alpha': 2,
-             's0': 1e5,
-             's1': 2e1,
+             's0': 1e6,
+             's1': 8e2,
              's2': f_param['s2'],
              'dt': dt,
              'z_ba_ratio': 0.9,
-             'stability': True,
+             'stability': False,
              'elasto_plastic': True,
              'steady_state': False,
              'n_ls': n_baseline}
@@ -77,7 +77,7 @@ for i_param, f_param in enumerate(f_params):
         fic = red_cpp.ReducedFrictionModel()
         fic.init(properties_to_list(p), shape, fn)
 
-        data_temp = {'x': np.zeros(int(num_time_steps/n_skipp)), 'y': np.zeros(int(num_time_steps/n_skipp)), 'tau': np.zeros(int(num_time_steps/n_skipp))}
+        data_temp = {'x': np.zeros(int(np.round(num_time_steps/n_skipp))), 'y': np.zeros(int(np.round(num_time_steps/n_skipp))), 'tau': np.zeros(int(np.round(num_time_steps/n_skipp)))}
         i_i = 0
         for i_t in tqdm(range(num_time_steps)):
             t = i_t * dt
@@ -109,12 +109,12 @@ for i_param, f_param in enumerate(f_params):
                  'mu_s': f_param['mu_s'],
                  'v_s': 1e-3,
                  'alpha': 2,
-                 's0': 1e5,
-                 's1': 2e1,
+                 's0': 1e6,
+                 's1': 8e2,
                  's2': f_param['s2'],
                  'dt': dt,
                  'z_ba_ratio': 0.9,
-                 'stability': True,
+                 'stability': False,
                  'elasto_plastic': True,
                  'steady_state': False,
                  'n_ls': n_ls_}
@@ -126,7 +126,7 @@ for i_param, f_param in enumerate(f_params):
             elapsed_time = end_time - start_time
             print('Time pre-comp ', elapsed_time, ' for ', shape, ' and N = ', n_ls_)
 
-            data_temp = {'x': np.zeros(int(num_time_steps/n_skipp)), 'y': np.zeros(int(num_time_steps/n_skipp)), 'tau': np.zeros(int(num_time_steps/n_skipp))}
+            data_temp = {'x': np.zeros(int(np.round(num_time_steps/n_skipp))), 'y': np.zeros(int(np.round(num_time_steps/n_skipp))), 'tau': np.zeros(int(np.round(num_time_steps/n_skipp)))}
             i_i = 0
 
             for i_t in tqdm(range(num_time_steps)):

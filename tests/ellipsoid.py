@@ -33,7 +33,7 @@ properties = {'grid_shape': (n_cells, n_cells),  # number of grid elements in x 
               'v_s': 1e-3,
               'alpha': 2, # called gamma in paper
               's0': 1e6,
-              's1': 8e1,
+              's1': 8e2,
               's2': 0,
               'dt': 1e-4,
               'z_ba_ratio': 0.9,

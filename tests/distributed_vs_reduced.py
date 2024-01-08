@@ -31,9 +31,9 @@ properties = {'grid_shape': (21, 21),  # number of grid elements in x any
               's0': 1e6,
               's1': 8e1,
               's2': 0.2,
-              'dt': 1e-4,
+              'dt': 1e-5,
               'z_ba_ratio': 0.9,
-              'stability': True,
+              'stability': False,
               'elasto_plastic': True,
               'steady_state': False,
               'n_ls': 20}
@@ -49,7 +49,7 @@ def properties_to_list(prop):
 
 fic = cpp.DistributedFrictionModel()
 
-shape_name = "LineGrad"
+shape_name = "Circle"
 
 fic.init(properties_to_list(properties), shape_name, fn)
 cop = np.array(fic.get_cop())

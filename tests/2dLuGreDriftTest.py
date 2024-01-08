@@ -16,10 +16,10 @@ mpl.rcParams['axes.xmargin'] = 0
 mpl.rcParams['axes.formatter.limits'] = (-2, 3)
 sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
 
-model = 'Reduced'  # which friction model to test, either 'Distributed' or 'Reduced'
+model = 'Distributed'  # which friction model to test, either 'Distributed' or 'Reduced'
 test_type = 'Tangential' # i which direction the oscillation is applied, 'Tangential' or 'Normal'
 
-dt = 1e-4  # time step
+dt = 1e-5  # time step
 r = 0.05  # size of contact patch
 sim_time = 5  # total sim time
 
@@ -31,7 +31,7 @@ p = {'grid_shape': (21, 21),  # number of grid elements in x any
      'v_s': 1e-3,
      'alpha': 2,  # called gamma in paper
      's0': 1e6,
-     's1': 8e1,
+     's1': 8e2,
      's2': 0.2,
      'dt': dt,
      'z_ba_ratio': 0.9,

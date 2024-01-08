@@ -31,7 +31,7 @@ void DistributedFrictionModel::init(pybind11::list py_list, std::string shape_na
     int n_y = properties.grid_shape[1];
     std::vector<double> position_vec_y_new(n_y, 0.0);
     for (int iy = 0; iy<n_y; iy++){
-        position_vec_y_new[iy] = (iy + 0.5 - n_y/2.0)*properties.grid_size;
+        position_vec_y_new[iy] = -(iy + 0.5 - n_y/2.0)*properties.grid_size;
     }
     position_vec_y.assign(position_vec_y_new.begin(), position_vec_y_new.end());
 
@@ -41,6 +41,27 @@ void DistributedFrictionModel::init(pybind11::list py_list, std::string shape_na
     std::vector<std::vector<std::vector<double>>> lugre_z(properties.grid_shape[0], std::vector<std::vector<double>>(properties.grid_shape[1], std::vector<double>(int(2), 0.0)));
     lugre.z = lugre_z;
 
+    std::vector<std::vector<std::vector<double>>> lugre_dz(properties.grid_shape[0], std::vector<std::vector<double>>(properties.grid_shape[1], std::vector<double>(int(2), 0.0)));
+    lugre.dz = lugre_dz;
+
+
+    std::vector<std::vector<double>> lugre_beta(properties.grid_shape[0], std::vector<double>(properties.grid_shape[1], 0.0));
+    lugre.beta = lugre_beta;
+
+    shape_info_var = p_x_y.get(properties.grid_size);
+}
+
+void DistributedFrictionModel::update_surface(pybind11::list py_list, std::string shape_name, double fn){
+    std::vector<double> new_surf(properties.grid_shape[0]*properties.grid_shape[1], 0.0);
+    new_surf = pybind11::cast<std::vector<double>>(py_list);
+    p_x_y.update_shape_info(shape_name, new_surf);
+    p_x_y.set_fn(fn);
+    shape_info_var = p_x_y.get(properties.grid_size);
+}
+
+void DistributedFrictionModel::update_surface_cpp(std::vector<double> new_surf, std::string shape_name, double fn){
+    p_x_y.update_shape_info(shape_name, new_surf);
+    p_x_y.set_fn(fn);
     shape_info_var = p_x_y.get(properties.grid_size);
 }
 
@@ -61,7 +82,7 @@ void DistributedFrictionModel::init_cpp(utils::properties properties_, std::stri
     int n_y = properties.grid_shape[1];
     std::vector<double> position_vec_y_new(n_y, 0.0);
     for (int iy = 0; iy<n_y; iy++){
-        position_vec_y_new[iy] = (iy + 0.5 - n_y/2.0)*properties.grid_size;
+        position_vec_y_new[iy] = -(iy + 0.5 - n_y/2.0)*properties.grid_size;
     }
     position_vec_y.assign(position_vec_y_new.begin(), position_vec_y_new.end());
 
@@ -70,6 +91,12 @@ void DistributedFrictionModel::init_cpp(utils::properties properties_, std::stri
 
     std::vector<std::vector<std::vector<double>>> lugre_z(properties.grid_shape[0], std::vector<std::vector<double>>(properties.grid_shape[1], std::vector<double>(int(2), 0.0)));
     lugre.z = lugre_z;
+
+    std::vector<std::vector<std::vector<double>>> lugre_dz(properties.grid_shape[0], std::vector<std::vector<double>>(properties.grid_shape[1], std::vector<double>(int(2), 0.0)));
+    lugre.dz = lugre_dz;
+
+    std::vector<std::vector<double>> lugre_beta(properties.grid_shape[0], std::vector<double>(properties.grid_shape[1], 0.0));
+    lugre.beta = lugre_beta;
 
     shape_info_var = p_x_y.get(properties.grid_size);
 
@@ -86,6 +113,10 @@ utils::properties DistributedFrictionModel::get_properties(){
 
 std::vector<double> DistributedFrictionModel::get_force_at_cop(){
     return force_vec_cop;
+}
+
+std::vector<double> DistributedFrictionModel::get_force_at_center(){
+    return force_vec_center;
 }
 
 
@@ -130,7 +161,7 @@ std::vector<double> DistributedFrictionModel::step_single_point(){
 std::vector<double> DistributedFrictionModel::step_bilinear(){
     std::vector<double> force_at_center(3);
 
-    if(velocity.tau == 0){
+    if(abs(velocity.tau) < 1e-10){
         force_at_center = step_single_point();
     }else{
         int nx = properties.grid_shape[0];
@@ -228,14 +259,14 @@ void DistributedFrictionModel::update_lugre(){
             v_norm = sqrt(vx*vx + vy*vy);
 
             g = p.mu_c + (p.mu_s - p.mu_c) * exp(- pow((v_norm/p.v_s), p.alpha));
-            if (v_norm == 0){
+            /*if (v_norm == 0){
                 v_norm1 = 1;
             }else{
                 v_norm1 = v_norm;
-            }
+            }*/
 
-            z_ss[0] = vx*g/(p.s0*v_norm1);
-            z_ss[1] = vy*g/(p.s0*v_norm1);
+            z_ss[0] = vx*g/(p.s0*v_norm+1e-10);
+            z_ss[1] = vy*g/(p.s0*v_norm+1e-10);
             if (p.steady_state == true){
                 lugre.f[ix][iy][0] = (p.s0 * z_ss[0] + p.s2*vx) * shape_info_var.f_n_grid[ix][iy];
                 lugre.f[ix][iy][1] = (p.s0 * z_ss[1] + p.s2*vy) * shape_info_var.f_n_grid[ix][iy];
@@ -247,10 +278,11 @@ void DistributedFrictionModel::update_lugre(){
                 beta = utils::elasto_plastic(lugre.z[ix][iy], z_ss, p.z_ba_ratio, vel_grid[ix][iy], 2);
                 dz[0] = vx - beta * lugre.z[ix][iy][0] * p.s0 * v_norm / g;
                 dz[1] = vy - beta * lugre.z[ix][iy][1] * p.s0 * v_norm / g;
+                lugre.beta[ix][iy] = beta;
             }else{
                 dz[0] = vx - lugre.z[ix][iy][0] * p.s0 * v_norm / g;
                 dz[1] = vy - lugre.z[ix][iy][1] * p.s0 * v_norm / g;
-
+                lugre.beta[ix][iy] = 1.0;
             }
 
             if (p.stability == true){
@@ -260,17 +292,63 @@ void DistributedFrictionModel::update_lugre(){
                 dz[1] = std::min(abs(dz[1]), abs(delta_z[1]))*((dz[1] > 0) - (dz[1] < 0));
             }
 
-            lugre.z[ix][iy][0] += dz[0] * p.dt;
-            lugre.z[ix][iy][1] += dz[1] * p.dt;
+
 
             lugre.f[ix][iy][0] = (p.s0 * lugre.z[ix][iy][0] + p.s1 * dz[0] + p.s2 * vx) * shape_info_var.f_n_grid[ix][iy];
             lugre.f[ix][iy][1] = (p.s0 * lugre.z[ix][iy][1] + p.s1 * dz[1] + p.s2 * vy) * shape_info_var.f_n_grid[ix][iy];
+
+            lugre.z[ix][iy][0] += dz[0] * p.dt;
+            lugre.z[ix][iy][1] += dz[1] * p.dt;
+
+            lugre.dz[ix][iy][0] = dz[0];
+            lugre.dz[ix][iy][1] = dz[1];
 
         }
     }
     
 
 }
+
+
+std::vector<double> DistributedFrictionModel::step_ode(pybind11::list py_y, pybind11::list py_vel){
+    velocity.x = pybind11::cast<double>(py_vel[0]);
+    velocity.y = pybind11::cast<double>(py_vel[1]);
+    velocity.tau = pybind11::cast<double>(py_vel[2]);
+    shape_info_var = p_x_y.get(properties.grid_size);
+    int jx;
+    int jy;
+
+    for (int ix = 0; ix<properties.grid_shape[0]; ix++){
+        for (int iy = 0; iy<properties.grid_shape[1]; iy++){
+            jx = 2*iy + 2*properties.grid_shape[1]*ix; 
+            jy = 2*iy + 2*properties.grid_shape[1]*ix + 1;    
+
+            lugre.z[ix][iy][0] = pybind11::cast<double>(py_y[jx]);
+            lugre.z[ix][iy][1] = pybind11::cast<double>(py_y[jy]);
+        }
+    }
+
+    update_velocity_grid(velocity);
+    update_lugre();
+
+    force_vec_center = approximate_integral();
+    force_vec_cop = move_force_to_cop(force_vec_center);
+
+    std::vector<double> dz_out(properties.grid_shape[0]*properties.grid_shape[1]*2, 0.0);
+
+    for (int ix = 0; ix<properties.grid_shape[0]; ix++){
+        for (int iy = 0; iy<properties.grid_shape[1]; iy++){
+            jx = 2*iy + 2*properties.grid_shape[1]*ix;
+            jy = 2*iy + 2*properties.grid_shape[1]*ix + 1;     
+
+            dz_out[jx] = lugre.dz[ix][iy][0];
+            dz_out[jy] = lugre.dz[ix][iy][1];
+
+        }
+    }
+    return dz_out;
+}
+
 
 std::vector<double> DistributedFrictionModel::approximate_integral(){
     double fx = 0;
@@ -328,7 +406,10 @@ PYBIND11_MODULE(FrictionModelCPPClass, var) {
         .def(py::init<>())
         .def("init", &DistributedFrictionModel::init)
         .def("step", &DistributedFrictionModel::step)
+        .def("step_ode", &DistributedFrictionModel::step_ode)
         .def("get_force_at_cop", &DistributedFrictionModel::get_force_at_cop)
+        .def("get_force_at_center", &DistributedFrictionModel::get_force_at_center)
         .def("set_fn", &DistributedFrictionModel::set_fn)
-        .def("get_cop", &DistributedFrictionModel::get_cop);
+        .def("get_cop", &DistributedFrictionModel::get_cop)
+        .def("update_surface", &DistributedFrictionModel::update_surface);
 }
