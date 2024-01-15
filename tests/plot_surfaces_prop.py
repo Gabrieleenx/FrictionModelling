@@ -78,7 +78,7 @@ for fn in fN:
 
     ax_2.set_xlabel('$x$ $[mm]$', fontsize=11)
     ax_2.set_ylabel('$y$ $[mm]$', fontsize=11)
-    ax_2.set_title(fn, fontsize=9)
+    ax_2.set_title('$f_N = $' + str(fn), fontsize=9)
     cb = ax_2.collections[0].colorbar
     cb.ax.tick_params(labelsize=7)
     if i == 3:

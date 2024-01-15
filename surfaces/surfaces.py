@@ -185,11 +185,35 @@ def proportional_surface_circle(shape, fn):
     ny = shape[1]
     cx = (nx-1)/2.0
     cy = (ny-1)/ 2.0
-    mu = 0.2590 # silicone
-    mu = 0.5 # silicone
+    mu = 1/3
+    #mu = 0.5 # silicone
     c = 6 # originally 2.07 in Modeling of Contact Mechanics and Friction Limit Surfaces for Soft Fingers in Robotics, with Experimental Results
     c_k = 1.144 # the effects of this will be normalized away later.
-    k = 1/mu
+    k = 1/0.5
+    a_max = cx +0.5
+    a = c*fn**mu
+    p = np.zeros(shape)
+    if a > a_max:
+        a = a_max
+
+    for ix in range(nx):
+        for iy in range(ny):
+            p_x = (ix-cx)
+            p_y = (iy-cy)
+            r = np.linalg.norm([p_x, p_y])
+            p[iy, ix] = p_r(r, a, k, c_k, fn)
+    return p
+
+def proportional_surface_circle2(shape, fn):
+    nx = shape[0]
+    ny = shape[1]
+    cx = (nx-1)/2.0
+    cy = (ny-1)/ 2.0
+    mu = 1/3
+    #mu = 0.5 # silicone
+    c = 6 # originally 2.07 in Modeling of Contact Mechanics and Friction Limit Surfaces for Soft Fingers in Robotics, with Experimental Results
+    c_k = 1.144 # the effects of this will be normalized away later.
+    k = fn/0.5
     a_max = cx +0.5
     a = c*fn**mu
     p = np.zeros(shape)
@@ -205,6 +229,7 @@ def proportional_surface_circle(shape, fn):
     return p
 
 
+"""
 def proportional_surface_circle2(shape, fn):
     nx = shape[0]
     ny = shape[1]
@@ -215,7 +240,7 @@ def proportional_surface_circle2(shape, fn):
 
     c = 6 # originally 2.07 in Modeling of Contact Mechanics and Friction Limit Surfaces for Soft Fingers in Robotics, with Experimental Results
     c_k = 1.144 # the effects of this will be normalized away later.
-    k = 1/mu
+    k = fn/mu
     fn_max = 4
     a_max = c*fn_max**0.2590
     a_scale = a_max/cx
@@ -229,9 +254,9 @@ def proportional_surface_circle2(shape, fn):
             p_x = (ix-cx)*a_scale
             p_y = (iy-cy)*a_scale
             r = np.linalg.norm([p_x, p_y])
-            p[iy, ix] = p_r2(r, a, k, c_k, fn)
+            p[iy, ix] = p_r(r, a, k, c_k, fn)
     return p
-
+"""
 def p_r(r, a, k, c_k, fn):
     if r > a:
         return 0
