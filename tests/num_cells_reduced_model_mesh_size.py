@@ -1,12 +1,13 @@
 """
-This file test how the resolution of the pre-calculated limit surface influences the reduced model.
+This file test how the resolution of the contact surface used for pre-calculating the limit surface influences the
+reduced model.
 """
 import numpy as np
 import seaborn as sns
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import frictionModelsCPP.build.FrictionModelCPPClass as cpp
 import frictionModelsCPP.build.ReducedFrictionModelCPPClass as red_cpp
-from frictionModels.frictionModel import DistributedFrictionModel
 import surfaces.surfaces as surf
 shape_set = {'Square': surf.p_square, 'Circle': surf.p_circle, 'Line': surf.p_line, 'LineGrad': surf.p_line_grad}
 from frictionModels.utils import vel_to_cop
@@ -25,14 +26,13 @@ n_skipp = 10
 sim_time = 5
 dt = 1e-5
 fn = 1
-n_baseline = 100
-n_grid = 21
+n_baseline = 101
+
 num_time_steps = int(sim_time/dt)
 time = []
 data_vel = {'x':[], 'y':[], 'tau':[]}
 data_base_line = {}
 data = {}
-
 contact_size = 0.02
 
 def properties_to_list(prop):
@@ -47,18 +47,17 @@ def properties_to_list(prop):
 
 
 shapes = ['Square', 'Circle', 'LineGrad']
-
-n_ls = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35]
-f_params = [{'mu_c':1, 'mu_s':1, 's2':0.0}, {'mu_c':1, 'mu_s':1.2, 's2':0.2}]
+n_grids = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35]
+f_params = [{'mu_c':1, 'mu_s':1, 's2':0.0}, {'mu_c':1, 'mu_s':1.2, 's2':0.2}] #, {'mu_c':1, 'mu_s':1.2, 's2':0.2}
 
 for i_param, f_param in enumerate(f_params):
     for i_shape, shape in enumerate(shapes):
-        p = {'grid_shape': (n_grid, n_grid),  # number of grid elements in x any
-             'grid_size': contact_size / n_grid,  # the physical size of each grid element
+        p = {'grid_shape': (n_baseline, n_baseline),  # number of grid elements in x any
+             'grid_size': contact_size / n_baseline,  # the physical size of each grid element
              'mu_c': f_param['mu_c'],
              'mu_s': f_param['mu_s'],
              'v_s': 1e-3,
-             'alpha': 2,
+             'alpha': 2, # called gamma in paper
              's0': 1e6,
              's1': 8e2,
              's2': f_param['s2'],
@@ -67,15 +66,11 @@ for i_param, f_param in enumerate(f_params):
              'stability': False,
              'elasto_plastic': True,
              'steady_state': False,
-             'n_ls': n_baseline}
+             'n_ls': 20}
 
-        planar_lugre = DistributedFrictionModel(properties=p)
-        shape_ = surf.PObject(p['grid_size'], p['grid_shape'], shape_set[shape])
-        planar_lugre.update_p_x_y(shape_)
-        cop = planar_lugre.cop
-
-        fic = red_cpp.ReducedFrictionModel()
+        fic = cpp.DistributedFrictionModel()
         fic.init(properties_to_list(p), shape, fn)
+        cop = np.array(fic.get_cop())
 
         data_temp = {'x': np.zeros(int(np.round(num_time_steps/n_skipp))), 'y': np.zeros(int(np.round(num_time_steps/n_skipp))), 'tau': np.zeros(int(np.round(num_time_steps/n_skipp)))}
         i_i = 0
@@ -83,11 +78,9 @@ for i_param, f_param in enumerate(f_params):
             t = i_t * dt
             vel = vel_num_cells(t)
             vel = vel_to_cop(-cop, vel_vec=vel)
-
             vel_cpp = [vel['x'], vel['y'], vel['tau']]
             a = fic.step(vel_cpp)
             a = fic.get_force_at_cop()
-
             if i_t % n_skipp == 0:
                 if i_param == 0 and i_shape == 0:
                     time.append(t)
@@ -101,14 +94,14 @@ for i_param, f_param in enumerate(f_params):
                 i_i += 1
         data_base_line[shape + "_"+str(i_param)] = data_temp
 
-        for i_n_ls, n_ls_ in enumerate(n_ls):
+        for i_n_grid, n_grid in enumerate(n_grids):
 
             p = {'grid_shape': (n_grid, n_grid),  # number of grid elements in x any
                  'grid_size': contact_size/n_grid,  # the physical size of each grid element
                  'mu_c': f_param['mu_c'],
                  'mu_s': f_param['mu_s'],
                  'v_s': 1e-3,
-                 'alpha': 2,
+                 'alpha': 2, # called gamma in paper
                  's0': 1e6,
                  's1': 8e2,
                  's2': f_param['s2'],
@@ -117,14 +110,14 @@ for i_param, f_param in enumerate(f_params):
                  'stability': False,
                  'elasto_plastic': True,
                  'steady_state': False,
-                 'n_ls': n_ls_}
+                 'n_ls': 20}
 
             fic = red_cpp.ReducedFrictionModel()
             start_time = time_.time()
             fic.init(properties_to_list(p), shape, fn)
             end_time = time_.time()
             elapsed_time = end_time - start_time
-            print('Time pre-comp ', elapsed_time, ' for ', shape, ' and N = ', n_ls_)
+            print('Time pre-comp ', elapsed_time, ' for ', shape, ' and N = ', n_grid)
 
             data_temp = {'x': np.zeros(int(np.round(num_time_steps/n_skipp))), 'y': np.zeros(int(np.round(num_time_steps/n_skipp))), 'tau': np.zeros(int(np.round(num_time_steps/n_skipp)))}
             i_i = 0
@@ -136,14 +129,13 @@ for i_param, f_param in enumerate(f_params):
                 vel_cpp = [vel['x'], vel['y'],vel['tau']]
                 a = fic.step(vel_cpp)
                 a = fic.get_force_at_cop()
-
                 if i_t%n_skipp == 0:
                     data_temp['x'][i_i] = a[0]
                     data_temp['y'][i_i] = a[1]
                     data_temp['tau'][i_i] = a[2]
                     i_i += 1
 
-            data[shape + "_"+str(i_param)+"_"+str(n_ls_)] = data_temp
+            data[shape + "_"+str(i_param)+"_"+str(n_grid)] = data_temp
 
 
 def get_rmse_curve(shape, i_p, n_grids, data, data_base):
@@ -174,16 +166,19 @@ f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(8, 12))
 for i_param, f_param in enumerate(f_params):
     print(i_param, len(f_param))
     for i_shape, shape in enumerate(shapes):
-        r1, r2, r3 = get_rmse_curve(shape, i_param, n_ls, data, data_base_line)
+        r1, r2, r3 = get_rmse_curve(shape, i_param, n_grids, data, data_base_line)
+
         ax1.plot(r1, r2, label=shape+" p="+str(i_param), alpha=0.7)
         ax2.plot(r1, r3, label=shape+" p="+str(i_param), alpha=0.7)
+
+
 ax1.legend(loc=1)
-ax1.set_xlabel('$N_{LS}$')
+ax1.set_xlabel('N')
 ax1.set_ylabel('rmse$/f_{max}$')
 ax1.set_title('Tangential friction force')
 
 ax2.legend(loc=1)
-ax2.set_xlabel('$N_{LS}$')
+ax2.set_xlabel('N')
 ax2.set_ylabel('rmse$/\\tau_{max}$')
 ax2.set_title('Rotational friction force')
 
@@ -208,18 +203,21 @@ f, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 3))
 for i_param, f_param in enumerate(f_params):
     print(i_param, len(f_param))
     for i_shape, shape in enumerate(shapes):
-        r1, r2, r3 = get_rmse_curve(shape, i_param, n_ls, data, data_base_line)
-        ax1.plot(r1, r2, label=shape+" p="+str(i_param), alpha=0.7)
-        ax2.plot(r1, r3, label=shape+" p="+str(i_param), alpha=0.7)
+        r1, r2, r3 = get_rmse_curve(shape, i_param, n_grids, data, data_base_line)
+        r = [contact_size/rx for rx in r1]
+        ax1.plot(r, r2, label=shape+" p="+str(i_param), alpha=0.7)
+        ax2.plot(r, r3, label=shape+" p="+str(i_param), alpha=0.7)
+
 ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax1.get_yaxis().set_label_coords(-0.11,0.5)
-ax1.set_ylabel('RMSE$/||\mathbf{f}_{t\max}||_2$', fontsize="10" )
+ax1.set_ylabel('RMSE$/||\mathbf{f}_{t\max}||$', fontsize="10" )
 ax1.get_xaxis().set_visible(False)
 
-ax2.set_xlabel('$N_{ls}$')
 ax2.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax2.get_yaxis().set_label_coords(-0.11,0.5)
 ax2.set_ylabel('RMSE$/\\tau_{\max}$', fontsize="10")
+ax2.set_xlabel('Meshsize [m]')
+
 plt.tight_layout(h_pad=0.015)
 plt.show()
 
@@ -239,7 +237,7 @@ for i_param, f_param in enumerate(f_params):
         ax_23.plot(n_d_base_tau, label=shape + " p=" + str(i_param), alpha=0.7)
 
 
-        for i, v in enumerate(n_ls):
+        for i, v in enumerate(n_grids):
             d = data[shape + "_" + str(i_param) + "_" + str(v)]
             n_d_x = np.array(d['x'])
             n_d_y = np.array(d['y'])

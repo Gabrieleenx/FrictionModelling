@@ -81,8 +81,8 @@ fig = plt.figure(figsize=(4,4))
 ax = fig.add_subplot(projection='3d')
 
 ax.scatter(data3d[0,:], data3d[1,:], data3d[2,:], c=data3d[2,:], cmap='viridis')
-ax.set_xlabel('$f_x/f_{x{\max}}$' )
-ax.set_ylabel('$f_y/f_{y{\max}}$')
+ax.set_xlabel('$f_x/f_{{\max},x}$' )
+ax.set_ylabel('$f_y/f_{{\max},y}$')
 ax.set_zlabel('$\\tau /\\tau_{\max} $' )
 # Disable rotation for x-axis, y-axis, and z-axis labels
 

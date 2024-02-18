@@ -22,6 +22,8 @@ mpl.rcParams['axes.xmargin'] = 0
 mpl.rcParams['axes.formatter.limits'] = (-2, 3)
 sns.set_theme("paper", "ticks", font_scale=1.0, rc={"lines.linewidth": 2})
 
+plot_mesh_size = 1
+
 n_skipp = 10
 sim_time = 5
 dt = 1e-5
@@ -167,17 +169,29 @@ for i_param, f_param in enumerate(f_params):
     print(i_param, len(f_param))
     for i_shape, shape in enumerate(shapes):
         r1, r2, r3 = get_rmse_curve(shape, i_param, n_grids, data, data_base_line)
-        ax1.plot(r1, r2, label=shape+" p="+str(i_param), alpha=0.7)
-        ax2.plot(r1, r3, label=shape+" p="+str(i_param), alpha=0.7)
+        if plot_mesh_size:
+            r = [contact_size / rx for rx in r1]
+        else:
+            r = r1
+        ax1.plot(r, r2, label=shape+" p="+str(i_param), alpha=0.7)
+        ax2.plot(r, r3, label=shape+" p="+str(i_param), alpha=0.7)
 
 
 ax1.legend(loc=1)
-ax1.set_xlabel('N')
+
+if plot_mesh_size:
+    ax1.set_xlabel('Meshsize [m]')
+else:
+    ax1.set_xlabel('N')
+
 ax1.set_ylabel('rmse$/f_{max}$')
 ax1.set_title('Tangential friction force')
 
 ax2.legend(loc=1)
-ax2.set_xlabel('N')
+if plot_mesh_size:
+    ax2.set_xlabel('Meshsize [m]')
+else:
+    ax2.set_xlabel('N')
 ax2.set_ylabel('rmse$/\\tau_{max}$')
 ax2.set_title('Rotational friction force')
 
@@ -203,8 +217,12 @@ for i_param, f_param in enumerate(f_params):
     print(i_param, len(f_param))
     for i_shape, shape in enumerate(shapes):
         r1, r2, r3 = get_rmse_curve(shape, i_param, n_grids, data, data_base_line)
-        ax1.plot(r1, r2, label=shape+" p="+str(i_param), alpha=0.7)
-        ax2.plot(r1, r3, label=shape+" p="+str(i_param), alpha=0.7)
+        if plot_mesh_size:
+            r = [contact_size / rx for rx in r1]
+        else:
+            r = r1
+        ax1.plot(r, r2, label=shape+" p="+str(i_param), alpha=0.7)
+        ax2.plot(r, r3, label=shape+" p="+str(i_param), alpha=0.7)
 
 ax1.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax1.get_yaxis().set_label_coords(-0.11,0.5)
@@ -214,7 +232,10 @@ ax1.get_xaxis().set_visible(False)
 ax2.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0., labelspacing = 0.1, fontsize="12")
 ax2.get_yaxis().set_label_coords(-0.11,0.5)
 ax2.set_ylabel('RMSE$/\\tau_{\max}$', fontsize="10")
-ax2.set_xlabel('N')
+if plot_mesh_size:
+    ax2.set_xlabel('Meshsize [m]')
+else:
+    ax2.set_xlabel('N')
 
 plt.tight_layout(h_pad=0.015)
 plt.show()
@@ -233,7 +254,6 @@ for i_param, f_param in enumerate(f_params):
         ax_21.plot(n_d_base_x, label=shape + " p=" + str(i_param), alpha=0.7)
         ax_22.plot(n_d_base_y, label=shape + " p=" + str(i_param), alpha=0.7)
         ax_23.plot(n_d_base_tau, label=shape + " p=" + str(i_param), alpha=0.7)
-
 
         for i, v in enumerate(n_grids):
             d = data[shape + "_" + str(i_param) + "_" + str(v)]
