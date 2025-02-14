@@ -1,9 +1,9 @@
 # Planar LuGre friction modeling 
 
 This repository is the code developed for the paper "Planar Friction Modelling with LuGre Dynamics and Limit Surfaces", 
-which is currently in submission to IEEE Transactions on Robotics (T-RO). The paper is currently available in arXiv at:
+which has been accepted to IEEE Transactions on Robotics (T-RO). The pre-print version of the paper is currently available in arXiv at:
 http://arxiv.org/abs/2308.01123
-. If you use this work, please cite the paper. 
+. If you use this work, please cite the paper (proper citations will be added once the paper is published). 
 
 ## Dependencies 
 ### Python
