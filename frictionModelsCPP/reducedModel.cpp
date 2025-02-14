@@ -21,8 +21,8 @@ utils::closest_sample PreCompute::get_closest_samples(utils::vec vel, double ra_
     a1 *= 2*nr_segments/M_PI;
 
     double v_xy_norm = std::sqrt(pow(vel.x, 2) + pow(vel.y, 2));
-    v_xy_norm = ra_ * v_xy_norm /(pow(ra, 2));
-    double a2 = std::atan2(v_xy_norm, abs(vel.tau)) * 2 * nr_segments / M_PI;
+    //v_xy_norm = ra_ * v_xy_norm /(pow(ra, 2));
+    double a2 = std::atan2(v_xy_norm,  ra_ * abs(vel.tau)) * 2 * nr_segments / M_PI;
 
     int r1 = int(a1);
     int i1 = int(a2);
