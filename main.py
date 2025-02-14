@@ -16,7 +16,7 @@
 #script = "plotlyVizualization/plotly_viz.py"
 
 ## With ode solver
-script = "test_ode_solver/planar_slip_stick_solver.py"
+#script = "test_ode_solver/planar_slip_stick_solver.py"
 #script = "test_ode_solver/2dLuGreDriftTest_solver.py"
 #script = "test_ode_solver/distributed_vs_reduced_solver.py"
 #script = "test_ode_solver/distributed_vs_reduced_solver_bounds.py"

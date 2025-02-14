@@ -5,7 +5,7 @@ import numpy as np
 import seaborn as sns
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from friction_models_cpp import ModelRed, ModelDist, Force
+from test_ode_solver.friction_models_cpp import ModelRed, ModelDist, Force
 from matplotlib.patches import Rectangle, Circle
 import matplotlib as mpl
 from scipy.integrate import ode, solve_ivp

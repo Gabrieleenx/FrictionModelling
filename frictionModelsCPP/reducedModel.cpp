@@ -21,8 +21,8 @@ utils::closest_sample PreCompute::get_closest_samples(utils::vec vel, double ra_
     a1 *= 2*nr_segments/M_PI;
 
     double v_xy_norm = std::sqrt(pow(vel.x, 2) + pow(vel.y, 2));
-    v_xy_norm = ra_ * v_xy_norm /(pow(ra, 2));
-    double a2 = std::atan2(v_xy_norm, abs(vel.tau)) * 2 * nr_segments / M_PI;
+    //v_xy_norm = ra_ * v_xy_norm /(pow(ra, 2));
+    double a2 = std::atan2(v_xy_norm,  ra_ * abs(vel.tau)) * 2 * nr_segments / M_PI;
 
     int r1 = int(a1);
     int i1 = int(a2);
@@ -347,7 +347,6 @@ void ReducedFrictionModel::init(pybind11::list py_list, std::string shape_name, 
     properties.elasto_plastic = pybind11::cast<bool>(py_list[13]);
     properties.steady_state = pybind11::cast<bool>(py_list[14]);
     N_LS = pybind11::cast<int>(py_list[15]);
-
     // update p_x_y
     p_x_y.init(shape_name, properties.grid_size, properties.grid_shape, fn);
 
